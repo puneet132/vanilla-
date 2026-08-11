@@ -6,12 +6,12 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signO
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_FIREBASE_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID"
+  apiKey: "AIzaSyCp9RhfIJOnZ33n8G_cPLR7Rgn1Yq1crDE",
+  authDomain: "vanilla-1c9bb.firebaseapp.com",
+  projectId: "vanilla-1c9bb",
+  storageBucket: "vanilla-1c9bb.firebasestorage.app",
+  messagingSenderId: "576540236184",
+  appId: "1:576540236184:web:daf1e4a544ae70a50f73ed"
 };
 
 export const app = initializeApp(firebaseConfig);
