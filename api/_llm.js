@@ -35,6 +35,25 @@ function toGeminiSchema(node) {
   return node;
 }
 
+function providerError(providerName, status, bodyText) {
+  const err = new Error(`${providerName} API error (${status}): ${bodyText}`);
+  err.status = status;
+  err.provider = providerName;
+  return err;
+}
+
+// Maps a thrown provider error to a stable code the client-facing endpoints turn into
+// a specific, actionable message — without ever leaking the raw provider response body
+// (which can contain account/billing details) back to the browser.
+function classifyProviderError(err) {
+  const status = err && err.status;
+  if (status === 401 || status === 403) return "invalid_key";
+  if (status === 404) return "model_unavailable";
+  if (status === 429) return "rate_limited";
+  if (typeof status === "number" && status >= 500) return "provider_down";
+  return "unknown";
+}
+
 async function callAnthropic({ model, apiKey, system, text, image, tool }) {
   const content = image
     ? [{ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } }, { type: "text", text }]
@@ -49,7 +68,7 @@ async function callAnthropic({ model, apiKey, system, text, image, tool }) {
       tool_choice: { type: "tool", name: tool.name }
     })
   });
-  if (!r.ok) throw new Error(`Anthropic API error: ${await r.text()}`);
+  if (!r.ok) throw providerError("Anthropic", r.status, await r.text());
   const data = await r.json();
   const toolUse = (data.content || []).find(b => b.type === "tool_use");
   if (!toolUse) throw new Error("Anthropic returned no structured result");
@@ -70,7 +89,7 @@ async function callOpenAI({ model, apiKey, system, text, image, tool }) {
       tool_choice: { type: "function", function: { name: tool.name } }
     })
   });
-  if (!r.ok) throw new Error(`OpenAI API error: ${await r.text()}`);
+  if (!r.ok) throw providerError("OpenAI", r.status, await r.text());
   const data = await r.json();
   const call = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!call) throw new Error("OpenAI returned no structured result");
@@ -89,7 +108,7 @@ async function callGemini({ model, apiKey, system, text, image, tool }) {
       tool_config: { function_calling_config: { mode: "ANY", allowed_function_names: [tool.name] } }
     })
   });
-  if (!r.ok) throw new Error(`Gemini API error: ${await r.text()}`);
+  if (!r.ok) throw providerError("Gemini", r.status, await r.text());
   const data = await r.json();
   const partWithCall = (data.candidates?.[0]?.content?.parts || []).find(p => p.functionCall);
   if (!partWithCall) throw new Error("Gemini returned no structured result");
@@ -105,4 +124,4 @@ async function callProvider({ provider, model, apiKey, system, text, image, tool
   throw new Error(`unknown provider: ${provider}`);
 }
 
-module.exports = { callProvider, MODEL_REGISTRY, PROVIDERS: Object.keys(MODEL_REGISTRY) };
+module.exports = { callProvider, classifyProviderError, MODEL_REGISTRY, PROVIDERS: Object.keys(MODEL_REGISTRY) };

@@ -3,7 +3,15 @@
 // own encrypted, server-only stored key. The key never reaches the client.
 const { verifyIdToken, firestore } = require("./_firebaseAdmin");
 const { decrypt } = require("./_crypto");
-const { callProvider, PROVIDERS } = require("./_llm");
+const { callProvider, classifyProviderError, PROVIDERS } = require("./_llm");
+
+const ERROR_MESSAGES = {
+  invalid_key: (p) => `Your ${p} key looks invalid, expired, or revoked — remove and re-add it in Profile → AI providers.`,
+  model_unavailable: (p, m) => `"${m}" isn't available on your ${p} account yet — pick a different model in the dropdown and try again.`,
+  rate_limited: (p) => `${p} rate-limited this request — wait a moment and try again.`,
+  provider_down: (p) => `${p}'s API is temporarily unavailable — try again shortly.`,
+  unknown: () => "extraction failed — the model or provider may be unavailable right now"
+};
 
 const EXTRACT_TOOL = {
   name: "record_job_posting",
@@ -74,6 +82,7 @@ module.exports = async (req, res) => {
     return res.status(200).json(result);
   } catch (err) {
     console.error("job-extract failed:", err);
-    return res.status(502).json({ error: "extraction failed — the model or provider may be unavailable right now" });
+    const code = classifyProviderError(err);
+    return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model) });
   }
 };
