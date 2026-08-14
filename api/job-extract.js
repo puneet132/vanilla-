@@ -84,6 +84,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error("job-extract failed:", err);
     const code = classifyProviderError(err);
-    return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model) });
+    return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model), code });
   }
 };

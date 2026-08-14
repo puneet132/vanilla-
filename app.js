@@ -167,8 +167,31 @@ async function apiPost(path, body) {
   const idToken = await getIdToken();
   const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, idToken }) });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || "request failed");
+  if (!r.ok) {
+    const err = new Error(data.error || "request failed");
+    err.code = data.code;
+    throw err;
+  }
   return data;
+}
+
+// A real per-minute rate limit (unlike a quota/billing failure) resolves itself —
+// so for that one error code, wait it out with a visible countdown and retry once
+// automatically instead of making the user guess when to tap retry again. Any other
+// error (or a second failure) surfaces normally; this never loops more than once.
+const RATE_LIMIT_COOLDOWN_SECONDS = 65;
+async function withRateLimitRetry(fn, onWaiting) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err.code !== "rate_limited") throw err;
+    for (let s = RATE_LIMIT_COOLDOWN_SECONDS; s > 0; s--) {
+      onWaiting(`Rate-limited by the provider — retrying automatically in ${s}s…`);
+      await new Promise(res => setTimeout(res, 1000));
+    }
+    onWaiting("Retrying now…");
+    return await fn();
+  }
 }
 
 /* ---------- profile (Firestore) ---------- */
@@ -417,10 +440,13 @@ function setProcessing(text) {
 async function startExtraction(roleHint) {
   setProcessing(roleHint ? "Reading that role…" : "Reading the post…");
   try {
-    const jd = await apiPost("/api/job-extract", {
-      image: SESSION.imageB64, mediaType: "image/jpeg", roleHint,
-      provider: SESSION.provider, model: SESSION.model
-    });
+    const jd = await withRateLimitRetry(
+      () => apiPost("/api/job-extract", {
+        image: SESSION.imageB64, mediaType: "image/jpeg", roleHint,
+        provider: SESSION.provider, model: SESSION.model
+      }),
+      (msg) => { document.getElementById("processingStatus").textContent = msg; }
+    );
 
     if (jd.readable === false) {
       document.getElementById("unreadableReason").textContent = jd.unreadable_reason || "The image didn't look like a job posting, or was too cropped/blurry to extract.";
@@ -499,7 +525,10 @@ async function runGenerate() {
   let i = 0;
   const rotate = setInterval(() => { i = (i + 1) % statuses.length; document.getElementById("processingStatus").textContent = statuses[i]; }, 1800);
   try {
-    const gen = await apiPost("/api/job-generate", { jd: SESSION.jd, profile: PROFILE, provider: SESSION.provider, model: SESSION.model });
+    const gen = await withRateLimitRetry(
+      () => apiPost("/api/job-generate", { jd: SESSION.jd, profile: PROFILE, provider: SESSION.provider, model: SESSION.model }),
+      (msg) => { clearInterval(rotate); document.getElementById("processingStatus").textContent = msg; }
+    );
     clearInterval(rotate);
     SESSION.generation = gen;
     SESSION.mismatchOverridden = false;
@@ -766,10 +795,13 @@ async function draftFollowup(appId) {
   if (!sel) { toast("Add an AI provider key first"); showScreen("profile"); return; }
   toast("Drafting follow-up…");
   try {
-    const result = await apiPost("/api/job-followup", {
-      application: item, profile: PROFILE, daysSinceApplied: daysSince(item.dateApplied || item.date),
-      provider: sel.provider, model: sel.model
-    });
+    const result = await withRateLimitRetry(
+      () => apiPost("/api/job-followup", {
+        application: item, profile: PROFILE, daysSinceApplied: daysSince(item.dateApplied || item.date),
+        provider: sel.provider, model: sel.model
+      }),
+      (msg) => toast(msg)
+    );
     const followUp = { id: Date.now() + "-" + Math.random().toString(36).slice(2, 6), date: new Date().toISOString().slice(0, 10), subject: result.subject, body: result.body, status: "drafted" };
     const followUps = [...(item.followUps || []), followUp];
     await dbUpdate(appId, { followUps });
