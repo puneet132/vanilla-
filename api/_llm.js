@@ -43,6 +43,23 @@ function providerError(providerName, status, bodyText) {
   return err;
 }
 
+// Google's Generative Language API (Gemini) doesn't follow conventional HTTP auth/error
+// semantics — e.g. an invalid key comes back as HTTP 400 with a structured body like
+// {"error":{"status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}},
+// not 401/403. Parse that shape when present so Gemini errors classify as accurately
+// as OpenAI/Anthropic's, which use plain HTTP status codes.
+function parseGoogleErrorBody(bodyText) {
+  try {
+    const parsed = JSON.parse(bodyText);
+    const e = parsed && parsed.error;
+    if (e && typeof e.status === "string") {
+      const reason = (e.details || []).map(d => d.reason).filter(Boolean).join(",");
+      return { googleStatus: e.status, reason, message: e.message || "" };
+    }
+  } catch (_) { /* not JSON, or not Google's error shape — fall through to HTTP status */ }
+  return null;
+}
+
 // Maps a thrown provider error to a stable code the client-facing endpoints turn into
 // a specific, actionable message — without ever leaking the raw provider response body
 // (which can contain account/billing details) back to the browser.
@@ -53,7 +70,17 @@ function providerError(providerName, status, bodyText) {
 // just makes the same failure loop forever, which is exactly what happened here.
 function classifyProviderError(err) {
   const status = err && err.status;
-  const body = ((err && err.bodyText) || "").toLowerCase();
+  const bodyText = (err && err.bodyText) || "";
+  const body = bodyText.toLowerCase();
+
+  const google = parseGoogleErrorBody(bodyText);
+  if (google) {
+    if (google.reason === "API_KEY_INVALID" || google.googleStatus === "PERMISSION_DENIED" || google.googleStatus === "UNAUTHENTICATED") return "invalid_key";
+    if (google.googleStatus === "NOT_FOUND") return "model_unavailable";
+    if (google.googleStatus === "RESOURCE_EXHAUSTED") return google.message.toLowerCase().includes("quota") ? "quota_exceeded" : "rate_limited";
+    if (google.googleStatus === "UNAVAILABLE" || google.googleStatus === "INTERNAL") return "provider_down";
+  }
+
   if (status === 401 || status === 403) return "invalid_key";
   if (status === 404) return "model_unavailable";
   if (status === 429) {
@@ -64,6 +91,14 @@ function classifyProviderError(err) {
   }
   if (typeof status === "number" && status >= 500) return "provider_down";
   return "unknown";
+}
+
+// Provider error bodies for these three APIs never echo back the caller's own key, so a
+// capped snippet is safe to return straight to the client — meaning a failure is
+// diagnosable from what the user sees on screen, without needing server log access.
+function safeErrorDetail(err) {
+  const raw = (err && err.bodyText) || (err && err.message) || "";
+  return raw.slice(0, 300);
 }
 
 async function callAnthropic({ model, apiKey, system, text, image, tool }) {
@@ -136,4 +171,4 @@ async function callProvider({ provider, model, apiKey, system, text, image, tool
   throw new Error(`unknown provider: ${provider}`);
 }
 
-module.exports = { callProvider, classifyProviderError, MODEL_REGISTRY, PROVIDERS: Object.keys(MODEL_REGISTRY) };
+module.exports = { callProvider, classifyProviderError, safeErrorDetail, MODEL_REGISTRY, PROVIDERS: Object.keys(MODEL_REGISTRY) };

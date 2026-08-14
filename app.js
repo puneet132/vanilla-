@@ -168,7 +168,7 @@ async function apiPost(path, body) {
   const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, idToken }) });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const err = new Error(data.error || "request failed");
+    const err = new Error((data.error || "request failed") + (data.detail ? ` (${data.detail})` : ""));
     err.code = data.code;
     throw err;
   }

@@ -3,7 +3,7 @@
 // own encrypted, server-only stored key. The key never reaches the client.
 const { verifyIdToken, firestore } = require("./_firebaseAdmin");
 const { decrypt } = require("./_crypto");
-const { callProvider, classifyProviderError, PROVIDERS } = require("./_llm");
+const { callProvider, classifyProviderError, safeErrorDetail, PROVIDERS } = require("./_llm");
 
 const ERROR_MESSAGES = {
   invalid_key: (p) => `Your ${p} key looks invalid, expired, or revoked — remove and re-add it in Profile → AI providers.`,
@@ -84,6 +84,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error("job-extract failed:", err);
     const code = classifyProviderError(err);
-    return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model), code });
+    return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model), code, detail: safeErrorDetail(err) });
   }
 };

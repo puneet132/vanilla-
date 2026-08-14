@@ -3,7 +3,7 @@
 // or regenerates the resume; a follow-up is just a polite check-in.
 const { verifyIdToken, firestore } = require("./_firebaseAdmin");
 const { decrypt } = require("./_crypto");
-const { callProvider, classifyProviderError, PROVIDERS } = require("./_llm");
+const { callProvider, classifyProviderError, safeErrorDetail, PROVIDERS } = require("./_llm");
 
 const ERROR_MESSAGES = {
   invalid_key: (p) => `Your ${p} key looks invalid, expired, or revoked — remove and re-add it in Profile → AI providers.`,
@@ -65,6 +65,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error("job-followup failed:", err);
     const code = classifyProviderError(err);
-    return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model), code });
+    return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model), code, detail: safeErrorDetail(err) });
   }
 };
