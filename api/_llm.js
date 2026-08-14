@@ -39,17 +39,29 @@ function providerError(providerName, status, bodyText) {
   const err = new Error(`${providerName} API error (${status}): ${bodyText}`);
   err.status = status;
   err.provider = providerName;
+  err.bodyText = bodyText || "";
   return err;
 }
 
 // Maps a thrown provider error to a stable code the client-facing endpoints turn into
 // a specific, actionable message — without ever leaking the raw provider response body
 // (which can contain account/billing details) back to the browser.
+//
+// 429 is split into two distinct cases because they need opposite advice: a transient
+// rate limit is worth retrying, but "insufficient_quota"/no-billing is permanent until
+// the account's billing is fixed — telling a quota-exhausted user to "wait and retry"
+// just makes the same failure loop forever, which is exactly what happened here.
 function classifyProviderError(err) {
   const status = err && err.status;
+  const body = ((err && err.bodyText) || "").toLowerCase();
   if (status === 401 || status === 403) return "invalid_key";
   if (status === 404) return "model_unavailable";
-  if (status === 429) return "rate_limited";
+  if (status === 429) {
+    if (body.includes("insufficient_quota") || body.includes("quota") || body.includes("billing") || body.includes("exceeded your current")) {
+      return "quota_exceeded";
+    }
+    return "rate_limited";
+  }
   if (typeof status === "number" && status >= 500) return "provider_down";
   return "unknown";
 }

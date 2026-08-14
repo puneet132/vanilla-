@@ -8,6 +8,7 @@ const { callProvider, classifyProviderError, PROVIDERS } = require("./_llm");
 const ERROR_MESSAGES = {
   invalid_key: (p) => `Your ${p} key looks invalid, expired, or revoked — remove and re-add it in Profile → AI providers.`,
   model_unavailable: (p, m) => `"${m}" isn't available on your ${p} account yet — pick a different model in the dropdown and try again.`,
+  quota_exceeded: (p) => `Your ${p} account has no usable quota or billing credits — this will keep failing no matter how many times you retry. Either add billing on ${p}'s platform, or switch to Gemini in Profile → AI providers (free, no billing required).`,
   rate_limited: (p) => `${p} rate-limited this request — wait a moment and try again.`,
   provider_down: (p) => `${p}'s API is temporarily unavailable — try again shortly.`,
   unknown: () => "extraction failed — the model or provider may be unavailable right now"
