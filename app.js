@@ -3,70 +3,42 @@ import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-/* ---------- default profile (seed) ---------- */
+/* ---------- default profile (empty seed) ----------
+ * Deliberately blank. This file is served publicly to anyone who loads the
+ * app — no sign-in required — so it must never contain a real person's
+ * contact details or work history. It previously shipped the author's name,
+ * phone number, email, and full employment history, which meant (a) anyone
+ * could read them straight out of the JS bundle, and (b) every new account
+ * started life pre-filled with someone else's resume.
+ *
+ * A returning user never sees this: loadProfile() only writes the seed when
+ * the account has no Firestore document yet. The shape is kept intact so the
+ * profile form, quick-questions, and generation prompts have the keys they
+ * expect.
+ */
 const DEFAULT_PROFILE = {
   identity: {
-    name: "Puneet Gupta",
-    location: "Gurugram, India",
-    phone: "+91-9602801140",
-    email: "puneetgupta132@gmail.com",
-    linkedin: "linkedin.com/in/puneetgupta132"
+    name: "",
+    location: "",
+    phone: "",
+    email: "",
+    linkedin: ""
   },
   standingAnswers: {
-    notice_period: "30 days",
+    notice_period: "",
     current_ctc: "",
     expected_ctc: "",
-    location: "Gurugram",
+    location: "",
     open_to_relocation: "yes"
   },
   resume: {
-    experience_years: 4,
-    domains: ["BFSI/insurance", "e-commerce", "supply chain", "US healthcare (HIPAA)"],
-    headline_options: ["Product Manager", "Product Owner", "Business Systems Analyst", "Business Analyst"],
-    experience: [
-      {
-        title: "Business Consultant (Product Owner / Business Systems Analyst)",
-        company: "Kellton — deployed at Axis Max Life Insurance",
-        location: "Gurugram, India",
-        dates: "Aug 2025–Present",
-        achievements: [
-          "Led mSpace, a 0-to-1 insurance app, from concept to launch with zero critical go-live issues",
-          "Drove 5,000+ customer activations and a 50% engagement uplift post-launch",
-          "Cut cross-team requirement ambiguity by 40% through clearer PRDs/BRDs/FSDs",
-          "Reduced post-launch production incidents by 50%",
-          "Cut time-to-market by 30% using Value vs. Effort prioritization",
-          "Improved feature ROI by 25% via Figma prototyping collaboration with UI/UX",
-          "Authored 90+ artifacts: PRDs, BRDs, FSDs, user journeys, process flows",
-          "Aligned 5+ Scrum teams around a single roadmap",
-          "Onboarded 3+ international enterprise accounts within 3 months",
-          "Won the Best Employee Award at Axis Max Life"
-        ]
-      },
-      {
-        title: "Business Analyst",
-        company: "AppInventiv",
-        location: "Noida, India",
-        dates: "Oct 2022–Jul 2025",
-        achievements: [
-          "Authored requirement artifacts (PRDs, BRDs, FSDs, user journeys, process flows) across e-commerce, supply chain, and US healthcare (HIPAA) engagements",
-          "Ran competitor benchmarking and gap analysis to shape product roadmaps",
-          "Defined and tracked KPIs across multiple client engagements",
-          "Won the Spotlight Award at AppInventiv"
-        ]
-      }
-    ],
-    education: [{ degree: "B.Tech, Computer Science", school: "GIT Jaipur", dates: "2017–2021" }],
-    projects: [
-      { name: "AI Shopping Copilot", description: "AI-assisted shopping copilot concept for a D2C e-commerce context — product discovery and conversational recommendations." },
-      { name: "Fourteen", description: "A diet + workout coach PWA, built end-to-end with Claude Code — installable, offline-capable, personal fat-loss tracker." }
-    ],
-    skills: [
-      "Roadmap strategy", "Prioritization (MoSCoW, Value vs. Effort)", "PRD/BRD/FSD authoring",
-      "Gap analysis", "KPI definition & tracking", "Competitor benchmarking",
-      "JIRA", "Confluence", "Figma", "Visio", "Balsamiq", "Miro", "Notion",
-      "Firebase", "Amplitude", "Mixpanel", "Zendesk", "Basic SQL",
-      "AI-assisted workflows (Claude/ChatGPT for PRD drafting, research synthesis, evaluating AI feature output)"
-    ]
+    experience_years: 0,
+    domains: [],
+    headline_options: [],
+    experience: [],
+    education: [],
+    projects: [],
+    skills: []
   }
 };
 

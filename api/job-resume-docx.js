@@ -29,7 +29,10 @@ module.exports = async (req, res) => {
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after: 40 },
-    children: [new TextRun({ text: contact?.name || "Puneet Gupta", bold: true, size: 32 })]
+    // No hardcoded fallback name: this used to default to the original
+    // author's name, so any other account with a blank profile name got a
+    // resume with a stranger's name on it.
+    children: [new TextRun({ text: contact?.name || "", bold: true, size: 32 })]
   }));
   if (resume.title_line) {
     children.push(new Paragraph({
