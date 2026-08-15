@@ -1,6 +1,7 @@
 {
   "name": "Vanilla",
   "short_name": "Vanilla",
+  "id": "./",
   "description": "Screenshot a job post, get a tailored resume and draft email in seconds.",
   "start_url": "./index.html",
   "scope": "./",
