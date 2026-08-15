@@ -845,6 +845,30 @@ document.getElementById("btnResetProfile").addEventListener("click", async () =>
   toast("Reset to default");
 });
 
+// Irreversible, so it asks for the word to be typed rather than a single
+// confirm() that can be dismissed by reflex. The server independently
+// re-checks the same phrase.
+document.getElementById("btnDeleteAccount").addEventListener("click", async () => {
+  const typed = prompt(
+    "This permanently deletes your profile, all logged applications and follow-ups, and your saved provider keys.\n\n" +
+    "This cannot be undone.\n\nType DELETE to confirm:"
+  );
+  if (typed !== "DELETE") {
+    if (typed !== null) toast("Not deleted — the phrase didn't match");
+    return;
+  }
+  try {
+    await apiPost("/api/delete-account", { confirm: "DELETE" });
+    // Clear the local import marker so a fresh account on this device isn't
+    // silently blocked from the one-time legacy import.
+    try { localStorage.removeItem("jobagent.importDismissed.v1"); } catch (e) {}
+    toast("Account deleted");
+    await signOut(auth);
+  } catch (e) {
+    toast(e.message || "Could not delete the account");
+  }
+});
+
 /* ---------- service worker ---------- */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
