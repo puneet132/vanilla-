@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "description": "Screenshot a job posting, get a fit check, a tailored resume, and a drafted email — reviewed before anything sends.",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  },
   "dependencies": {
     "docx": "^9.1.0",
     "firebase-admin": "^12.7.0"
