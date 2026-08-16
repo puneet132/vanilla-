@@ -10,7 +10,7 @@ const ERROR_MESSAGES = {
   model_unavailable: (p, m) => `"${m}" isn't available on your ${p} account yet — pick a different model in the dropdown and try again.`,
   quota_exceeded: (p) => `Your ${p} account has no usable quota or billing credits — this will keep failing no matter how many times you retry. Either add billing on ${p}'s platform, or switch to Gemini in Profile → AI providers (free, no billing required).`,
   rate_limited: (p) => `${p} rate-limited this request — wait a moment and try again.`,
-  provider_down: (p) => `${p}'s API is temporarily unavailable — try again shortly.`,
+  provider_down: (p, m) => `${p} is overloaded on their side right now and refused "${m}" — this is their capacity, not your key or your setup. It usually clears within a minute. If it keeps happening, pick a different model in the dropdown.`,
   unknown: () => "extraction failed — the model or provider may be unavailable right now"
 };
 

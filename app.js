@@ -154,17 +154,54 @@ async function apiPost(path, body) {
 // automatically instead of making the user guess when to tap retry again. Any other
 // error (or a second failure) surfaces normally; this never loops more than once.
 const RATE_LIMIT_COOLDOWN_SECONDS = 65;
-async function withRateLimitRetry(fn, onWaiting) {
+
+// Gemini answers capacity pressure with 503 UNAVAILABLE — "This model is
+// currently experiencing high demand... Please try again later." That is the
+// provider explicitly telling us to retry, but the client used to give up
+// immediately on provider_down and hand the user a dead end. Short escalating
+// waits, because these spikes usually clear in seconds rather than minutes.
+const PROVIDER_DOWN_BACKOFF_SECONDS = [5, 12, 25];
+
+async function countdown(seconds, onWaiting, label) {
+  for (let s = seconds; s > 0; s--) {
+    onWaiting(`${label} ${s}s…`);
+    await new Promise(res => setTimeout(res, 1000));
+  }
+  onWaiting("Retrying now…");
+}
+
+// Retries only the two failures that can actually succeed on a second attempt.
+// quota_exceeded and invalid_key are deliberately excluded — retrying those
+// just loops forever against a state only the user can change.
+async function withAutoRetry(fn, onWaiting) {
   try {
     return await fn();
   } catch (err) {
-    if (err.code !== "rate_limited") throw err;
-    for (let s = RATE_LIMIT_COOLDOWN_SECONDS; s > 0; s--) {
-      onWaiting(`Rate-limited by the provider — retrying automatically in ${s}s…`);
-      await new Promise(res => setTimeout(res, 1000));
+    if (err.code === "rate_limited") {
+      await countdown(RATE_LIMIT_COOLDOWN_SECONDS, onWaiting, "Rate-limited by the provider — retrying automatically in");
+      return await fn();
     }
-    onWaiting("Retrying now…");
-    return await fn();
+
+    if (err.code === "provider_down") {
+      let last = err;
+      for (let i = 0; i < PROVIDER_DOWN_BACKOFF_SECONDS.length; i++) {
+        await countdown(
+          PROVIDER_DOWN_BACKOFF_SECONDS[i],
+          onWaiting,
+          `The model is busy right now — retry ${i + 1} of ${PROVIDER_DOWN_BACKOFF_SECONDS.length} in`
+        );
+        try {
+          return await fn();
+        } catch (e) {
+          last = e;
+          // A different failure mid-retry is not a capacity problem; stop.
+          if (e.code !== "provider_down") throw e;
+        }
+      }
+      throw last;
+    }
+
+    throw err;
   }
 }
 
@@ -414,7 +451,7 @@ function setProcessing(text) {
 async function startExtraction(roleHint) {
   setProcessing(roleHint ? "Reading that role…" : "Reading the post…");
   try {
-    const jd = await withRateLimitRetry(
+    const jd = await withAutoRetry(
       () => apiPost("/api/job-extract", {
         image: SESSION.imageB64, mediaType: "image/jpeg", roleHint,
         provider: SESSION.provider, model: SESSION.model
@@ -499,7 +536,7 @@ async function runGenerate() {
   let i = 0;
   const rotate = setInterval(() => { i = (i + 1) % statuses.length; document.getElementById("processingStatus").textContent = statuses[i]; }, 1800);
   try {
-    const gen = await withRateLimitRetry(
+    const gen = await withAutoRetry(
       () => apiPost("/api/job-generate", { jd: SESSION.jd, profile: PROFILE, provider: SESSION.provider, model: SESSION.model }),
       (msg) => { clearInterval(rotate); document.getElementById("processingStatus").textContent = msg; }
     );
@@ -769,7 +806,7 @@ async function draftFollowup(appId) {
   if (!sel) { toast("Add an AI provider key first"); showScreen("profile"); return; }
   toast("Drafting follow-up…");
   try {
-    const result = await withRateLimitRetry(
+    const result = await withAutoRetry(
       () => apiPost("/api/job-followup", {
         application: item, profile: PROFILE, daysSinceApplied: daysSince(item.dateApplied || item.date),
         provider: sel.provider, model: sel.model
