@@ -60,10 +60,12 @@ const MODEL_REGISTRY = {
     { id: "gpt-5-mini", label: "GPT-5 Mini" },
     { id: "gpt-4o", label: "GPT-4o" }
   ],
+  // Flash first — it is what a newly-saved key defaults to, and Pro is heavily
+  // restricted on Gemini's free tier. Keep this order in sync with api/_llm.js.
   gemini: [
-    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+    { id: "gemini-flash-latest", label: "Gemini Flash (latest)" },
     { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { id: "gemini-flash-latest", label: "Gemini Flash (latest)" }
+    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
   ]
 };
 

@@ -16,24 +16,22 @@ const MODEL_REGISTRY = {
     { id: "gpt-5-mini", label: "GPT-5 Mini" },
     { id: "gpt-4o", label: "GPT-4o" }
   ],
+  // Flash first, deliberately. The first entry is what a newly-saved key
+  // defaults to, and Pro is heavily restricted (often unavailable) on Gemini's
+  // free tier — defaulting to it made the app fail out of the box for exactly
+  // the users the free tier is meant to serve.
   gemini: [
-    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+    { id: "gemini-flash-latest", label: "Gemini Flash (latest)" },
     { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { id: "gemini-flash-latest", label: "Gemini Flash (latest)" }
+    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
   ]
 };
 
-function toGeminiSchema(node) {
-  if (Array.isArray(node)) return node.map(toGeminiSchema);
-  if (node && typeof node === "object") {
-    const out = {};
-    for (const [k, v] of Object.entries(node)) {
-      out[k] = k === "type" && typeof v === "string" ? v.toUpperCase() : toGeminiSchema(v);
-    }
-    return out;
-  }
-  return node;
-}
+// NOTE: Gemini's schema types are deliberately left lowercase and passed
+// through unchanged. An earlier version recursively uppercased every `type`
+// value for Gemini's legacy enum dialect; the JSON REST API accepts plain
+// JSON-Schema types, and the uppercasing was one of the differences between
+// this code and a known-working Gemini integration.
 
 function providerError(providerName, status, bodyText) {
   const err = new Error(`${providerName} API error (${status}): ${bodyText}`);
@@ -143,23 +141,42 @@ async function callOpenAI({ model, apiKey, system, text, image, tool }) {
   return JSON.parse(call.function.arguments);
 }
 
+// Gemini uses JSON mode (responseMimeType + responseSchema) rather than the
+// forced function calling used for Anthropic and OpenAI.
+//
+// The tool-calling path (tools + tool_config mode:"ANY") was what this app
+// originally sent, and it failed repeatedly in production with 5xx
+// INTERNAL/UNAVAILABLE responses that surfaced to users as "temporarily
+// unavailable". Forced function calling is markedly more fragile on Gemini
+// than JSON mode; a separate, known-working Gemini integration by the same
+// author used JSON mode and had none of these failures. Same structured
+// result, far more reliable path.
 async function callGemini({ model, apiKey, system, text, image, tool }) {
   const parts = image ? [{ text }, { inlineData: { mimeType: image.mediaType, data: image.data } }] : [{ text }];
+  // The tool description carries intent the schema alone doesn't express, so
+  // it moves into the system instruction now that there's no tool declaration.
+  const systemText = tool && tool.description ? `${system}\n\n${tool.description}` : system;
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      system_instruction: { parts: [{ text: system }] },
+      system_instruction: { parts: [{ text: systemText }] },
       contents: [{ role: "user", parts }],
-      tools: [{ functionDeclarations: [{ name: tool.name, description: tool.description, parameters: toGeminiSchema(tool.schema) }] }],
-      tool_config: { function_calling_config: { mode: "ANY", allowed_function_names: [tool.name] } }
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: tool.schema
+      }
     })
   });
   if (!r.ok) throw providerError("Gemini", r.status, await r.text());
   const data = await r.json();
-  const partWithCall = (data.candidates?.[0]?.content?.parts || []).find(p => p.functionCall);
-  if (!partWithCall) throw new Error("Gemini returned no structured result");
-  return partWithCall.functionCall.args;
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!raw) throw new Error("Gemini returned no structured result");
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error("Gemini returned malformed JSON");
+  }
 }
 
 // tool: { name, description, schema } — schema is a plain JSON-schema object shared
