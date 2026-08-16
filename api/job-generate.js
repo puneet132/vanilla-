@@ -3,7 +3,7 @@
 // whichever provider/model the user picked, using their own stored key.
 const { verifyIdToken, firestore } = require("./_firebaseAdmin");
 const { decrypt } = require("./_crypto");
-const { callProvider, classifyProviderError, safeErrorDetail, PROVIDERS } = require("./_llm");
+const { callProviderWithFallback, classifyProviderError, safeErrorDetail, PROVIDERS } = require("./_llm");
 
 const ERROR_MESSAGES = {
   invalid_key: (p) => `Your ${p} key looks invalid, expired, or revoked — remove and re-add it in Profile → AI providers.`,
@@ -100,8 +100,8 @@ module.exports = async (req, res) => {
   const text = `JOB DESCRIPTION (extracted from a screenshot):\n${JSON.stringify(jd, null, 2)}\n\nPROFILE (the only source of truth — do not add facts beyond this):\n${JSON.stringify(profile, null, 2)}\n\nProduce the fit assessment, tailored resume content, and email draft.`;
 
   try {
-    const result = await callProvider({ provider, model, apiKey, system: SYSTEM, text, tool: GENERATE_TOOL });
-    return res.status(200).json(result);
+    const { result, model: usedModel, fellBackFrom } = await callProviderWithFallback({ provider, model, apiKey, system: SYSTEM, text, tool: GENERATE_TOOL });
+    return res.status(200).json({ ...result, _model: usedModel, _fellBackFrom: fellBackFrom });
   } catch (err) {
     console.error("job-generate failed:", err);
     const code = classifyProviderError(err);

@@ -3,7 +3,7 @@
 // own encrypted, server-only stored key. The key never reaches the client.
 const { verifyIdToken, firestore } = require("./_firebaseAdmin");
 const { decrypt } = require("./_crypto");
-const { callProvider, classifyProviderError, safeErrorDetail, PROVIDERS } = require("./_llm");
+const { callProviderWithFallback, classifyProviderError, safeErrorDetail, PROVIDERS } = require("./_llm");
 
 const ERROR_MESSAGES = {
   invalid_key: (p) => `Your ${p} key looks invalid, expired, or revoked — remove and re-add it in Profile → AI providers.`,
@@ -75,12 +75,14 @@ module.exports = async (req, res) => {
     : "Extract the job posting from this screenshot. If it's a status-bar/UI-chrome-only crop, or clearly not a job post, set readable=false. If more than one distinct role appears in the image, set multiple_roles=true and list short labels in role_candidates instead of guessing which one to extract.";
 
   try {
-    const result = await callProvider({
+    const { result, model: usedModel, fellBackFrom } = await callProviderWithFallback({
       provider, model, apiKey, system: SYSTEM, text,
       image: { mediaType: mediaType || "image/jpeg", data: image },
       tool: EXTRACT_TOOL
     });
-    return res.status(200).json(result);
+    // usedModel/fellBackFrom let the client tell the user it quietly switched
+    // models rather than leaving them wondering why the answer looks different.
+    return res.status(200).json({ ...result, _model: usedModel, _fellBackFrom: fellBackFrom });
   } catch (err) {
     console.error("job-extract failed:", err);
     const code = classifyProviderError(err);

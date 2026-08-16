@@ -44,9 +44,10 @@ const DEFAULT_PROFILE = {
 
 /* ---------- provider metadata (client) ---------- */
 const PROVIDER_META = {
-  anthropic: { label: "Anthropic (Claude)", keyUrl: "https://console.anthropic.com/settings/keys", note: "Pay-as-you-go API pricing." },
-  openai: { label: "OpenAI (ChatGPT)", keyUrl: "https://platform.openai.com/api-keys", note: "Pay-as-you-go API pricing." },
-  gemini: { label: "Google (Gemini)", keyUrl: "https://aistudio.google.com/apikey", note: "Has a real free tier — easiest place to start." }
+  gemini: { label: "Google (Gemini)", keyUrl: "https://aistudio.google.com/apikey", note: "Free tier, no card needed. Best place to start." },
+  openrouter: { label: "OpenRouter", keyUrl: "https://openrouter.ai/keys", note: "Free models, no card needed. Good backup when Gemini is busy." },
+  anthropic: { label: "Anthropic (Claude)", keyUrl: "https://console.anthropic.com/settings/keys", note: "Paid API credits required — a Claude subscription does NOT cover this." },
+  openai: { label: "OpenAI (ChatGPT)", keyUrl: "https://platform.openai.com/api-keys", note: "Paid API credits required — a ChatGPT Plus subscription does NOT cover this." }
 };
 // Keep in sync with api/_llm.js MODEL_REGISTRY.
 const MODEL_REGISTRY = {
@@ -60,19 +61,25 @@ const MODEL_REGISTRY = {
     { id: "gpt-5-mini", label: "GPT-5 Mini" },
     { id: "gpt-4o", label: "GPT-4o" }
   ],
-  // Flash first — it is what a newly-saved key defaults to, and Pro is heavily
-  // restricted on Gemini's free tier. Keep this order in sync with api/_llm.js.
+  // Free-tier fallback chain, least-contended first. Keep in sync with
+  // api/_llm.js — the server walks this same order when a model is busy.
   gemini: [
-    { id: "gemini-flash-latest", label: "Gemini Flash (latest)" },
+    { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (most reliable free)" },
     { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+    { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
     { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
+  ],
+  openrouter: [
+    { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B (free)" },
+    { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (free)" },
+    { id: "nvidia/nemotron-nano-12b-v2-vl:free", label: "Nemotron Nano 12B VL (free)" }
   ]
 };
 
 /* ---------- state ---------- */
 let CURRENT_USER = null;
 let PROFILE = null;
-let PROVIDER_STATUS = { anthropic: { configured: false }, openai: { configured: false }, gemini: { configured: false } };
+let PROVIDER_STATUS = { gemini: { configured: false }, openrouter: { configured: false }, anthropic: { configured: false }, openai: { configured: false } };
 let SESSION = { imageB64: null, jd: null, generation: null, mismatchOverridden: false, provider: null, model: null };
 
 /* ---------- nav ---------- */
@@ -292,7 +299,7 @@ async function loadProviderStatus() {
   try {
     PROVIDER_STATUS = await apiPost("/api/save-provider-key", { action: "status" });
   } catch (e) {
-    PROVIDER_STATUS = { anthropic: { configured: false }, openai: { configured: false }, gemini: { configured: false } };
+    PROVIDER_STATUS = { gemini: { configured: false }, openrouter: { configured: false }, anthropic: { configured: false }, openai: { configured: false } };
   }
   renderProviderList();
 }
@@ -428,13 +435,13 @@ function handleFile(file) {
   reader.onload = () => {
     const img = new Image();
     img.onload = () => {
-      const maxW = 1600;
+      const maxW = 1024;
       const scale = Math.min(1, maxW / img.width);
       const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
       SESSION.imageB64 = dataUrl.split(",")[1];
       startExtraction();
     };
@@ -458,6 +465,13 @@ async function startExtraction(roleHint) {
       }),
       (msg) => { document.getElementById("processingStatus").textContent = msg; }
     );
+
+    // The server silently walks to another model when the chosen one is busy.
+    // Say so, otherwise a user sees different output quality with no explanation.
+    if (jd._fellBackFrom) {
+      const label = (MODEL_REGISTRY[SESSION.provider] || []).find(m => m.id === jd._model);
+      toast(`${jd._fellBackFrom} was busy — used ${label ? label.label : jd._model} instead`);
+    }
 
     if (jd.readable === false) {
       document.getElementById("unreadableReason").textContent = jd.unreadable_reason || "The image didn't look like a job posting, or was too cropped/blurry to extract.";
@@ -883,6 +897,69 @@ document.getElementById("btnResetProfile").addEventListener("click", async () =>
   fillProfileForm();
   toast("Reset to default");
 });
+
+/* ---------- master resume upload ---------- */
+const fileResume = document.getElementById("fileResume");
+document.getElementById("btnUploadResume").addEventListener("click", () => {
+  if (!configuredProviders().length) { toast("Add an AI provider key first"); return; }
+  fileResume.click();
+});
+
+fileResume.addEventListener("change", e => {
+  const file = e.target.files[0];
+  // Reset so re-picking the same file still fires a change event.
+  e.target.value = "";
+  if (file) handleResumeUpload(file);
+});
+
+async function handleResumeUpload(file) {
+  const sel = currentSelection();
+  if (!sel) { toast("Add an AI provider key first"); return; }
+
+  const status = document.getElementById("resumeUploadStatus");
+  const btn = document.getElementById("btnUploadResume");
+  const setStatus = msg => { status.textContent = msg; };
+
+  btn.disabled = true;
+  setStatus(`Reading ${file.name}…`);
+
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = () => reject(new Error("could not read that file"));
+      reader.readAsDataURL(file);
+    });
+
+    const parsed = await withAutoRetry(
+      () => apiPost("/api/profile-resume-parse", {
+        file: base64, filename: file.name, provider: sel.provider, model: sel.model
+      }),
+      setStatus
+    );
+
+    // Only overwrite identity fields the resume actually supplied — a resume
+    // without a phone number shouldn't wipe one the user already typed in.
+    const id = parsed.identity || {};
+    PROFILE.identity = { ...PROFILE.identity };
+    for (const k of ["name", "location", "phone", "email", "linkedin"]) {
+      if (id[k]) PROFILE.identity[k] = id[k];
+    }
+    if (parsed.resume) PROFILE.resume = parsed.resume;
+
+    await saveProfile();
+    fillProfileForm();
+
+    const r = parsed.resume || {};
+    setStatus(`Imported ${(r.experience || []).length} role(s), ${(r.education || []).length} education entr(ies), ${(r.skills || []).length} skills. Review the fields above and edit anything that looks off.`);
+    toast("Resume imported");
+  } catch (err) {
+    setStatus("");
+    toast(err.message || "Could not read that resume");
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // Irreversible, so it asks for the word to be typed rather than a single
 // confirm() that can be dismissed by reflex. The server independently

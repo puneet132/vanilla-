@@ -16,14 +16,27 @@ const MODEL_REGISTRY = {
     { id: "gpt-5-mini", label: "GPT-5 Mini" },
     { id: "gpt-4o", label: "GPT-4o" }
   ],
-  // Flash first, deliberately. The first entry is what a newly-saved key
-  // defaults to, and Pro is heavily restricted (often unavailable) on Gemini's
-  // free tier — defaulting to it made the app fail out of the box for exactly
-  // the users the free tier is meant to serve.
+  // Order is the free-tier fallback chain, cheapest and least-contended first.
+  //
+  // "gemini-flash-latest" is deliberately NOT here. It is an alias that always
+  // resolves to Google's newest Flash model, which is by definition the most
+  // in-demand thing on the platform — it returned 503 UNAVAILABLE ("this model
+  // is currently experiencing high demand") over and over. Pinned older models
+  // are mature, far less contended, and entirely good enough for this task.
   gemini: [
-    { id: "gemini-flash-latest", label: "Gemini Flash (latest)" },
+    { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (most reliable free)" },
     { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+    { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
     { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
+  ],
+  // OpenRouter exists so one provider's capacity problem cannot take the whole
+  // product down. Every model here is free (":free" suffix), vision-capable
+  // (the screenshot step needs it), and supports tool calling — verified
+  // against OpenRouter's public model API rather than assumed.
+  openrouter: [
+    { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B (free)" },
+    { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (free)" },
+    { id: "nvidia/nemotron-nano-12b-v2-vl:free", label: "Nemotron Nano 12B VL (free)" }
   ]
 };
 
@@ -179,13 +192,82 @@ async function callGemini({ model, apiKey, system, text, image, tool }) {
   }
 }
 
-// tool: { name, description, schema } — schema is a plain JSON-schema object shared
-// across all three providers (converted to Gemini's uppercase-type dialect internally).
+// OpenRouter speaks the OpenAI wire format, so this mirrors callOpenAI. Tool
+// calling is used rather than response_format because every free model on the
+// list supports tools, while structured-output support varies model to model —
+// tools are the only mechanism that works across all of them.
+async function callOpenRouter({ model, apiKey, system, text, image, tool }) {
+  const userContent = image
+    ? [{ type: "text", text }, { type: "image_url", image_url: { url: `data:${image.mediaType};base64,${image.data}` } }]
+    : text;
+  const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+      // OpenRouter attributes traffic with these; they are not credentials.
+      "HTTP-Referer": "https://vanilla-brown.vercel.app",
+      "X-Title": "Vanilla"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "system", content: system }, { role: "user", content: userContent }],
+      tools: [{ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.schema } }],
+      tool_choice: { type: "function", function: { name: tool.name } }
+    })
+  });
+  if (!r.ok) throw providerError("OpenRouter", r.status, await r.text());
+  const data = await r.json();
+  // OpenRouter surfaces upstream failures as a 200 with an error body.
+  if (data.error) throw providerError("OpenRouter", data.error.code || 502, JSON.stringify(data.error));
+  const call = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!call) throw new Error("OpenRouter returned no structured result");
+  return JSON.parse(call.function.arguments);
+}
+
+// tool: { name, description, schema } — a plain JSON-schema object shared across
+// every provider.
 async function callProvider({ provider, model, apiKey, system, text, image, tool }) {
   if (provider === "anthropic") return callAnthropic({ model, apiKey, system, text, image, tool });
   if (provider === "openai") return callOpenAI({ model, apiKey, system, text, image, tool });
   if (provider === "gemini") return callGemini({ model, apiKey, system, text, image, tool });
+  if (provider === "openrouter") return callOpenRouter({ model, apiKey, system, text, image, tool });
   throw new Error(`unknown provider: ${provider}`);
 }
 
-module.exports = { callProvider, classifyProviderError, safeErrorDetail, MODEL_REGISTRY, PROVIDERS: Object.keys(MODEL_REGISTRY) };
+// Capacity failures are model-specific, not account-specific: when Google says a
+// model is "experiencing high demand", a different model on the same key
+// usually answers fine. So on provider_down (and model_unavailable) walk the
+// rest of that provider's list rather than surfacing a dead end.
+//
+// Only those two codes fall through. invalid_key and quota_exceeded are
+// account-level — trying another model just repeats the same failure N times.
+async function callProviderWithFallback(args) {
+  const chain = MODEL_REGISTRY[args.provider] || [];
+  const start = chain.findIndex(m => m.id === args.model);
+  // Try the requested model first, then everything after it in the chain.
+  const order = [args.model, ...chain.slice(start + 1).map(m => m.id)]
+    .filter((id, i, a) => id && a.indexOf(id) === i);
+
+  let lastErr;
+  for (const model of order) {
+    try {
+      const result = await callProvider({ ...args, model });
+      return { result, model, fellBackFrom: model === args.model ? null : args.model };
+    } catch (err) {
+      lastErr = err;
+      const code = classifyProviderError(err);
+      if (code !== "provider_down" && code !== "model_unavailable") throw err;
+    }
+  }
+  throw lastErr;
+}
+
+module.exports = {
+  callProvider,
+  callProviderWithFallback,
+  classifyProviderError,
+  safeErrorDetail,
+  MODEL_REGISTRY,
+  PROVIDERS: Object.keys(MODEL_REGISTRY)
+};

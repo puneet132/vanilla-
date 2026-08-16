@@ -23,6 +23,14 @@ async function validateKey(provider, apiKey) {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
       return r.ok;
     }
+    if (provider === "openrouter") {
+      // Returns metadata about the key itself — cheapest possible auth check,
+      // and it consumes no model credits.
+      const r = await fetch("https://openrouter.ai/api/v1/key", {
+        headers: { authorization: `Bearer ${apiKey}` }
+      });
+      return r.ok;
+    }
   } catch (e) {
     return false;
   }

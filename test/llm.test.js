@@ -111,8 +111,11 @@ describe("safeErrorDetail", () => {
 });
 
 describe("MODEL_REGISTRY", () => {
-  test("exposes exactly the three supported providers", () => {
-    assert.deepStrictEqual(PROVIDERS.sort(), ["anthropic", "gemini", "openai"]);
+  // The exact provider list is asserted in fallback.test.js; here we only care
+  // that PROVIDERS and MODEL_REGISTRY never drift apart, since save-provider-key
+  // validates against PROVIDERS while the callers index MODEL_REGISTRY.
+  test("PROVIDERS matches the registry keys", () => {
+    assert.deepStrictEqual(PROVIDERS.slice().sort(), Object.keys(MODEL_REGISTRY).sort());
   });
 
   test("every model has a non-empty id and label", () => {
