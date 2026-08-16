@@ -203,9 +203,19 @@
       </div>
 
       <div class="card">
-        <h2 style="margin-top:0;">Master resume data (JSON)</h2>
-        <p class="sub" style="margin-bottom:10px;">Experience, education, achievements, skills, projects — edit directly. Every tailored resume and email is generated fresh from this.</p>
-        <div class="field"><textarea id="pResumeJson" style="min-height:320px; font-family:ui-monospace,Menlo,monospace; font-size:12.5px;"></textarea></div>
+        <h2 style="margin-top:0;">Master resume</h2>
+        <p class="sub" style="margin-bottom:10px;">Upload your existing resume and it gets read into the fields below. Nothing is invented — only what's actually written in your file. Every tailored resume and email is generated fresh from this.</p>
+
+        <button class="btn btn-primary" id="btnUploadResume"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14V5m0 0L6.8 8.2M10 5l3.2 3.2"/><path d="M4 14.5v1A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg> Upload resume (.pdf or .docx)</button>
+        <input type="file" id="fileResume" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        <div class="sub" id="resumeUploadStatus" style="margin-top:8px;"></div>
+
+        <div class="hr"></div>
+        <details>
+          <summary class="sub" style="cursor:pointer;">Edit the raw data</summary>
+          <p class="sub" style="margin:10px 0;">Advanced — this is what the app actually reads. Uploading a resume overwrites it.</p>
+          <div class="field"><textarea id="pResumeJson" style="min-height:320px; font-family:ui-monospace,Menlo,monospace; font-size:12.5px;"></textarea></div>
+        </details>
       </div>
 
       <div class="btn-row">

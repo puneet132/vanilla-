@@ -8,6 +8,8 @@
   },
   "dependencies": {
     "docx": "^9.1.0",
-    "firebase-admin": "^12.7.0"
+    "firebase-admin": "^12.7.0",
+    "mammoth": "^1.12.1",
+    "pdf-parse": "^2.4.5"
   }
 }
