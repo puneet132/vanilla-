@@ -1,4 +1,5 @@
-import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signOut } from "./firebase-init.js";
+import { auth, db, googleProvider, gmailProvider, signInWithPopup, reauthenticateWithPopup, onAuthStateChanged, signOut, GoogleAuthProvider } from "./firebase-init.js";
+import { buildMimeMessage, toGmailRaw } from "./mime.mjs";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -124,6 +125,9 @@ document.getElementById("btnSignOut").addEventListener("click", async () => {
 onAuthStateChanged(auth, async user => {
   if (!user) {
     CURRENT_USER = null;
+    // One place covers sign-out, session expiry and account deletion — a live
+    // Gmail token must not survive the account it belongs to.
+    clearGmailToken();
     document.body.classList.remove("authed");
     showScreen("login");
     return;
@@ -646,6 +650,138 @@ function renderReview() {
   document.getElementById("whatChangedCard").style.display = (r.what_changed && r.what_changed.length) ? "block" : "none";
 }
 
+// ---------------------------------------------------------------------------
+// Gmail drafts
+//
+// The mailto: route hands the body to whatever mail client the OS has, which
+// cannot carry an attachment — hence the old "attach it yourself" toast. Writing
+// a real Gmail draft is the only way to hand someone a finished application:
+// recipient, subject, body AND the tailored .docx, ready to review and send.
+//
+// Nothing is ever sent. gmail.compose can only create drafts.
+// ---------------------------------------------------------------------------
+
+// Firebase does not persist or refresh the Google OAuth access token — it exists
+// only in the credential returned by a popup, and Google expires it in about an
+// hour. So it is held in memory for its lifetime and never written to storage:
+// a Gmail token in localStorage would outlive the tab and is exactly the kind of
+// credential worth stealing. Worst case the user sees one extra popup.
+let GMAIL_TOKEN = null;
+let GMAIL_TOKEN_EXPIRES_AT = 0;
+
+function clearGmailToken() {
+  GMAIL_TOKEN = null;
+  GMAIL_TOKEN_EXPIRES_AT = 0;
+}
+
+async function getGmailAccessToken() {
+  if (GMAIL_TOKEN && Date.now() < GMAIL_TOKEN_EXPIRES_AT) return GMAIL_TOKEN;
+  const user = auth.currentUser;
+  if (!user) throw new Error("signed_out");
+
+  // reauthenticateWithPopup rather than signInWithPopup: it pins the popup to the
+  // account already signed in, so someone with three Google accounts can't
+  // silently authorise the wrong mailbox and wonder where the draft went.
+  if (user.email) gmailProvider.setCustomParameters({ login_hint: user.email });
+  const res = await reauthenticateWithPopup(user, gmailProvider);
+  const token = GoogleAuthProvider.credentialFromResult(res)?.accessToken;
+  if (!token) throw new Error("no_token");
+
+  GMAIL_TOKEN = token;
+  // Google issues these for ~3600s. Expire ours early so a call that starts just
+  // before the boundary doesn't fail mid-flight.
+  GMAIL_TOKEN_EXPIRES_AT = Date.now() + 50 * 60 * 1000;
+  return token;
+}
+
+async function createGmailDraft({ to, subject, body, attachment }) {
+  const token = await getGmailAccessToken();
+  const raw = toGmailRaw(buildMimeMessage({ to, subject, body, attachment }));
+  const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ message: { raw } })
+  });
+  if (!r.ok) {
+    // A 401 means the token died early; drop it so the next attempt re-prompts
+    // rather than replaying a token Google has already rejected.
+    if (r.status === 401) clearGmailToken();
+    const detail = await r.text().catch(() => "");
+    const err = new Error(`gmail_api_${r.status}`);
+    err.status = r.status;
+    err.detail = detail;
+    throw err;
+  }
+  return r.json();
+}
+
+// Shared by the download button and the Gmail draft so the attachment is byte
+// for byte the file the user would have downloaded.
+async function buildResumeDocx() {
+  const jd = SESSION.jd, gen = SESSION.generation;
+  const idToken = await getIdToken();
+  const r = await fetch("/api/job-resume-docx", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      idToken, resume: gen.resume, contact: PROFILE.identity,
+      fileNameHint: `${jd.company || "resume"}-${jd.role_title || ""}`
+    })
+  });
+  if (!r.ok) throw new Error("resume_build_failed");
+  return {
+    blob: await r.blob(),
+    filename: `${(jd.company || "resume").replace(/[^a-z0-9]+/gi, "-")}-resume.docx`
+  };
+}
+
+document.getElementById("btnGmailDraft").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  const to = document.getElementById("emailTo").value;
+  const subject = document.getElementById("emailSubject").value;
+  const body = document.getElementById("emailBody").value;
+
+  if (!to) { toast("No recipient address on this application"); return; }
+
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "Saving to Gmail…";
+  try {
+    // The resume is best-effort: a draft with the right words in it still beats
+    // no draft, so a failed .docx build downgrades to a body-only draft rather
+    // than losing the whole thing.
+    let attachment = null;
+    try {
+      const { blob, filename } = await buildResumeDocx();
+      attachment = {
+        filename,
+        mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        bytes: new Uint8Array(await blob.arrayBuffer())
+      };
+    } catch (_) {
+      attachment = null;
+    }
+
+    await createGmailDraft({ to, subject, body, attachment });
+    toast(attachment ? "Draft saved to Gmail with your resume attached" : "Draft saved to Gmail — resume didn't attach, add it manually");
+  } catch (err) {
+    if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
+      toast("Gmail access cancelled");
+    } else if (err?.code === "auth/user-mismatch") {
+      toast("That's a different Google account — pick the one you signed in with");
+    } else if (err?.message === "signed_out") {
+      toast("Sign in again to save drafts");
+    } else if (err?.status === 403) {
+      toast("Gmail access wasn't granted — allow it when Google asks");
+    } else {
+      toast("Couldn't save the draft to Gmail");
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+});
+
 document.getElementById("btnCopyEmail").addEventListener("click", () => {
   navigator.clipboard.writeText(document.getElementById("emailBody").value).then(() => toast("Copied"));
 });
@@ -658,23 +794,12 @@ document.getElementById("btnMailto").addEventListener("click", () => {
   window.location.href = mailto;
 });
 document.getElementById("btnDownloadResume").addEventListener("click", async () => {
-  const jd = SESSION.jd, gen = SESSION.generation;
   try {
-    const idToken = await getIdToken();
-    const r = await fetch("/api/job-resume-docx", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        idToken, resume: gen.resume, contact: PROFILE.identity,
-        fileNameHint: `${jd.company || "resume"}-${jd.role_title || ""}`
-      })
-    });
-    if (!r.ok) { toast("Couldn't build the resume file"); return; }
-    const blob = await r.blob();
+    const { blob, filename } = await buildResumeDocx();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${(jd.company || "resume").replace(/[^a-z0-9]+/gi, "-")}-resume.docx`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
