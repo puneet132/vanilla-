@@ -60,7 +60,7 @@ const RESUME_TOOL = {
                 dates: { type: "string" },
                 achievements: { type: "array", items: { type: "string" } }
               },
-              required: ["title", "company", "achievements"]
+              required: ["title", "company", "dates", "achievements"]
             }
           },
           education: {
@@ -94,7 +94,12 @@ const SYSTEM = [
   "Copy only what is explicitly written in the document. Never invent, embellish, infer, or round a number, date, employer, metric, or skill that is not literally present.",
   "If a field is not in the document, return an empty string or empty array for it — do not guess.",
   "Keep achievement bullets in the candidate's own wording; do not rewrite, summarise, or improve them.",
-  "Only set experience_years when it is stated outright or unambiguously derivable from employment dates; otherwise return 0."
+  "Only set experience_years when it is stated outright or unambiguously derivable from employment dates; otherwise return 0.",
+  "",
+  "Capture EVERY role in the document, including short stints, internships and the oldest entries — completeness matters more than brevity, and a dropped role becomes an unexplained employment gap later.",
+  "Capture EVERY bullet under each role. Do not merge two bullets into one, drop the ones that look minor, or keep only the first few.",
+  "Always capture employment dates exactly as written (e.g. \"Mar 2022 – Present\"). If a role genuinely shows no dates, return an empty string rather than omitting the field.",
+  "Capture every skill listed, including tools and software named in a skills section."
 ].join("\n");
 
 async function extractText(base64, filename) {

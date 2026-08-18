@@ -773,6 +773,15 @@ async function createGmailDraft({ to, subject, body, attachment }) {
   return r.json();
 }
 
+function resumeFileName() {
+  const name = String(PROFILE?.identity?.name || "").trim();
+  const year = new Date().getFullYear();
+  const base = name ? `${name}_Resume_${year}` : `Resume_${year}`;
+  // Strip the characters Windows and macOS refuse in a filename, so the save
+  // doesn't silently fail on a name with a slash or colon in it.
+  return base.replace(/[<>:"/\\|?*\r\n]/g, "").trim() + ".docx";
+}
+
 // Shared by the download button and the Gmail draft so the attachment is byte
 // for byte the file the user would have downloaded.
 async function buildResumeDocx() {
@@ -783,7 +792,7 @@ async function buildResumeDocx() {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       idToken, resume: gen.resume, contact: PROFILE.identity,
-      fileNameHint: `${jd.company || "resume"}-${jd.role_title || ""}`
+      fileName: resumeFileName()
     })
   });
   if (!r.ok) {
@@ -795,10 +804,7 @@ async function buildResumeDocx() {
     err.userFacing = Boolean(info?.error);
     throw err;
   }
-  return {
-    blob: await r.blob(),
-    filename: `${(jd.company || "resume").replace(/[^a-z0-9]+/gi, "-")}-resume.docx`
-  };
+  return { blob: await r.blob(), filename: resumeFileName() };
 }
 
 document.getElementById("btnGmailDraft").addEventListener("click", async (e) => {

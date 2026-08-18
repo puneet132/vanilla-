@@ -1,7 +1,7 @@
 // Vercel serverless function — builds an ATS-safe .docx from tailored resume content.
 // No tables for layout, no text boxes, no images: just headings and paragraphs so
 // applicant tracking systems parse it cleanly.
-const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = require("docx");
+const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle, convertInchesToTwip } = require("docx");
 const { verifyIdToken } = require("./_firebaseAdmin");
 const { resumeIsSubstantive } = require("./_resume");
 
@@ -10,12 +10,71 @@ function textParagraph(text, opts = {}) {
 }
 
 function bulletParagraph(text) {
-  return new Paragraph({ text, bullet: { level: 0 }, spacing: { after: 60 } });
+  return new Paragraph({
+    text,
+    bullet: { level: 0 },
+    spacing: { after: 60 },
+    // Without an explicit indent the bullet glyph and the wrapped second line
+    // fight each other; this keeps wrapped text aligned under the first word.
+    indent: { left: 260, hanging: 200 }
+  });
 }
 
-function heading(text) {
-  return new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 140, after: 80 }, children: [new TextRun(text)] });
+// The client picks the filename (it knows the user's name); this decides what
+// is safe to echo into a Content-Disposition header. Strips CR/LF and quotes so
+// a crafted name can't inject headers, plus the characters Windows and macOS
+// reject in a filename so the download doesn't silently fail on save.
+function safeFileName(raw, fallback) {
+  const cleaned = String(raw || "")
+    .replace(/[\r\n"\\]/g, "")
+    .replace(/[/:*?<>|]/g, "")
+    .replace(/\.docx$/i, "")
+    .trim()
+    .slice(0, 120)
+    .trim();
+  return (cleaned || fallback) + ".docx";
 }
+
+// HEADING_2 is kept because it gives the document real structure, which is what
+// ATS parsers walk. Its *appearance* is overridden in the style sheet below —
+// left alone, Word renders its built-in Heading 2 as blue Calibri Light, which
+// is what made the generated resume look nothing like a resume.
+function heading(text) {
+  return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(text)] });
+}
+
+// One place for every measurement, so the document reads as a designed page
+// rather than a stack of defaults.
+const FONT = "Calibri";
+const INK = "1A1A1A";
+const MUTED = "595959";
+
+const DOC_STYLES = {
+  default: {
+    document: {
+      run: { font: FONT, size: 21, color: INK },          // 10.5pt body
+      paragraph: { spacing: { line: 264, after: 0 } }      // ~1.1 line spacing
+    },
+    // Section headings: small, bold, uppercase, with a hairline rule under
+    // them. Black, not Word's blue.
+    heading2: {
+      run: { font: FONT, size: 22, bold: true, color: INK, allCaps: true },
+      paragraph: {
+        spacing: { before: 260, after: 120 },
+        border: { bottom: { color: "BFBFBF", style: BorderStyle.SINGLE, size: 6, space: 3 } }
+      }
+    }
+  }
+};
+
+const PAGE = {
+  margin: {
+    top: convertInchesToTwip(0.5),
+    bottom: convertInchesToTwip(0.5),
+    left: convertInchesToTwip(0.65),
+    right: convertInchesToTwip(0.65)
+  }
+};
 
 // Exported so the decision about what lands in the file can be tested without
 // standing up a request. The bug this guards against — a resume that opened
@@ -30,14 +89,14 @@ function buildResumeDocument(resume, contact) {
     // No hardcoded fallback name: this used to default to the original
     // author's name, so any other account with a blank profile name got a
     // resume with a stranger's name on it.
-    children: [new TextRun({ text: contact?.name || "", bold: true, size: 32 })]
+    children: [new TextRun({ text: contact?.name || "", bold: true, size: 40, color: INK, characterSpacing: 12 })]
   }));
 
   if (resume.title_line) {
     children.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 80 },
-      children: [new TextRun({ text: resume.title_line, size: 22, color: "444444" })]
+      children: [new TextRun({ text: resume.title_line, size: 21, color: MUTED })]
     }));
   }
 
@@ -46,7 +105,7 @@ function buildResumeDocument(resume, contact) {
     children.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 200 },
-      children: [new TextRun({ text: contactLine, size: 18, color: "555555" })]
+      children: [new TextRun({ text: contactLine, size: 19, color: MUTED })]
     }));
   }
 
@@ -74,10 +133,10 @@ function buildResumeDocument(resume, contact) {
       const titleLine = [job.title, job.company].filter(Boolean).join(" — ");
       const metaLine = [job.location, job.dates].filter(Boolean).join(" · ");
       children.push(new Paragraph({
-        spacing: { before: 80, after: 20 },
-        children: [new TextRun({ text: titleLine, bold: true })]
+        spacing: { before: 200, after: 0 },
+        children: [new TextRun({ text: titleLine, bold: true, size: 22 })]
       }));
-      if (metaLine) children.push(new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: metaLine, italics: true, size: 18, color: "555555" })] }));
+      if (metaLine) children.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: metaLine, italics: true, size: 19, color: MUTED })] }));
       for (const b of job.bullets || []) children.push(bulletParagraph(b));
     }
   }
@@ -85,7 +144,7 @@ function buildResumeDocument(resume, contact) {
   if (Array.isArray(resume.projects) && resume.projects.length) {
     children.push(heading("Projects"));
     for (const p of resume.projects) {
-      children.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: p.name, bold: true })] }));
+      children.push(new Paragraph({ spacing: { before: 160, after: 0 }, children: [new TextRun({ text: p.name, bold: true, size: 22 })] }));
       if (p.description) children.push(textParagraph(p.description));
     }
   }
@@ -97,7 +156,10 @@ function buildResumeDocument(resume, contact) {
     }
   }
 
-  return new Document({ sections: [{ properties: {}, children }] });
+  return new Document({
+    styles: DOC_STYLES,
+    sections: [{ properties: { page: PAGE }, children }]
+  });
 }
 
 module.exports = async (req, res) => {
@@ -131,9 +193,9 @@ module.exports = async (req, res) => {
 
   try {
     const buffer = await Packer.toBuffer(buildResumeDocument(resume, contact));
-    const company = (req.body.fileNameHint || "resume").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    const fileName = safeFileName(req.body.fileName || req.body.fileNameHint, "Resume");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    res.setHeader("Content-Disposition", `attachment; filename="${company}-resume.docx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
     return res.status(200).send(buffer);
   } catch (err) {
     return res.status(500).json({ error: "docx build failed", detail: String(err) });
@@ -141,3 +203,4 @@ module.exports = async (req, res) => {
 };
 
 module.exports.buildResumeDocument = buildResumeDocument;
+module.exports.safeFileName = safeFileName;
