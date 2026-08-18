@@ -110,6 +110,11 @@ function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// Set when the user chooses "Finish later" in the setup wizard, so the next
+// sign-in doesn't drop them straight back into it. Declared here because the
+// auth listener below reads it.
+const OB_DISMISSED_KEY = "jobagent.onboardingDismissed.v1";
+
 /* ---------- auth ---------- */
 document.getElementById("btnGoogleSignIn").addEventListener("click", async () => {
   try {
@@ -138,7 +143,16 @@ onAuthStateChanged(auth, async user => {
   try {
     await Promise.all([loadProfile(), loadProviderStatus()]);
     populateHomeSelectors();
-    showScreen("home");
+    // A profile with nothing in it can't produce an application, so sending a
+    // new user to the capture screen only sets them up to fail at the fit
+    // check. Take them through setup first — unless they've explicitly chosen
+    // to finish later, in which case nagging them every sign-in is worse than
+    // letting them find it from Profile.
+    if (profileIsEmpty(PROFILE) && !localStorage.getItem(OB_DISMISSED_KEY)) {
+      startOnboarding();
+    } else {
+      showScreen("home");
+    }
     maybeOfferImport();
   } catch (e) {
     toast("Could not load your account data");
@@ -221,7 +235,9 @@ async function loadProfile() {
   const ref = doc(db, "users", CURRENT_USER.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) {
-    PROFILE = snap.data();
+    // Normalise on read: documents written by earlier versions can be missing
+    // arrays the editors index into.
+    PROFILE = normalizeProfile(snap.data());
   } else {
     PROFILE = JSON.parse(JSON.stringify(DEFAULT_PROFILE));
     await setDoc(ref, PROFILE);
@@ -459,7 +475,27 @@ function setProcessing(text) {
   showScreen("processing");
 }
 
+// An empty profile is a setup problem, not a hiring problem.
+//
+// Without this check the app happily ran extract + generate against the empty
+// seed profile, spent two provider calls, and came back with "Doesn't look like
+// a fit" — blaming the match when the real answer was "we know nothing about
+// you". The verdict was technically accurate and completely useless: the user's
+// next move is to upload a resume, not to find a different job.
+function profileIsEmpty(p) {
+  const r = (p && p.resume) || {};
+  return !(r.experience || []).length
+    && !(r.education || []).length
+    && !(r.projects || []).length
+    && !(r.skills || []).length;
+}
+
 async function startExtraction(roleHint) {
+  if (profileIsEmpty(PROFILE)) {
+    toast("Let's set up your profile first");
+    startOnboarding();
+    return;
+  }
   setProcessing(roleHint ? "Reading that role…" : "Reading the post…");
   try {
     const jd = await withAutoRetry(
@@ -638,6 +674,28 @@ function renderReview() {
       html += `</ul>`;
     });
   }
+  // Work history and education are the bulk of the .docx, so they belong in
+  // the preview too. Leaving them out is how a resume that was missing every
+  // job still looked fine on this screen, right up until the file was opened.
+  if (r.experience && r.experience.length) {
+    html += `<div style="margin-top:12px; font-weight:600;">Experience</div>`;
+    r.experience.forEach(job => {
+      const titleLine = [job.title, job.company].filter(Boolean).join(" — ");
+      const metaLine = [job.location, job.dates].filter(Boolean).join(" · ");
+      html += `<div style="margin-top:8px; font-weight:600;">${escapeHtml(titleLine)}</div>`;
+      if (metaLine) html += `<div class="sub" style="margin-bottom:4px;">${escapeHtml(metaLine)}</div>`;
+      if ((job.bullets || []).length) {
+        html += `<ul class="changed">` + job.bullets.map(b => `<li>${escapeHtml(b)}</li>`).join("") + `</ul>`;
+      }
+    });
+  }
+  if (r.education && r.education.length) {
+    html += `<div style="margin-top:12px; font-weight:600;">Education</div>`;
+    r.education.forEach(e => {
+      html += `<div>${escapeHtml([e.degree, e.school, e.dates].filter(Boolean).join(" — "))}</div>`;
+    });
+  }
+
   document.getElementById("resumePreview").innerHTML = html || "<span class='sub'>No resume content generated.</span>";
 
   const wc = document.getElementById("whatChangedList");
@@ -728,7 +786,15 @@ async function buildResumeDocx() {
       fileNameHint: `${jd.company || "resume"}-${jd.role_title || ""}`
     })
   });
-  if (!r.ok) throw new Error("resume_build_failed");
+  if (!r.ok) {
+    // The endpoint refuses to build an empty document and says why. That
+    // reason is worth far more to the user than "couldn't build the file".
+    const info = await r.json().catch(() => null);
+    const err = new Error(info?.error || "resume_build_failed");
+    err.code = info?.code;
+    err.userFacing = Boolean(info?.error);
+    throw err;
+  }
   return {
     blob: await r.blob(),
     filename: `${(jd.company || "resume").replace(/[^a-z0-9]+/gi, "-")}-resume.docx`
@@ -805,7 +871,7 @@ document.getElementById("btnDownloadResume").addEventListener("click", async () 
     a.remove();
     URL.revokeObjectURL(url);
   } catch (e) {
-    toast("Couldn't build the resume file");
+    toast(e.userFacing ? e.message : "Couldn't build the resume file");
   }
 });
 document.getElementById("btnMarkSent").addEventListener("click", async () => {
@@ -963,6 +1029,355 @@ async function draftFollowup(appId) {
 }
 
 /* ---------- profile screen ---------- */
+/* ---------- structured resume editors ----------
+   Before this existed, work history was editable only as raw JSON in a collapsed
+   <details> block, so the only realistic way to fill a profile was to upload a
+   resume file. Anyone without one was stuck — and an empty profile makes every
+   fit check come back "not a fit", which reads like a rejection rather than the
+   setup problem it actually is.
+
+   The same three editors are mounted twice: once in the first-run wizard and
+   once on the Profile screen. One implementation, so the two can never drift. */
+
+// Firestore documents written by older versions predate some of these arrays,
+// and a missing array crashes the editors on the first .length. Normalise on the
+// way in rather than defending at every use site.
+function normalizeProfile(p) {
+  const base = JSON.parse(JSON.stringify(DEFAULT_PROFILE));
+  const out = { ...base, ...(p || {}) };
+  out.identity = { ...base.identity, ...(p && p.identity) };
+  out.standingAnswers = { ...base.standingAnswers, ...(p && p.standingAnswers) };
+  out.resume = { ...base.resume, ...(p && p.resume) };
+  for (const k of ["domains", "headline_options", "experience", "education", "projects", "skills"]) {
+    if (!Array.isArray(out.resume[k])) out.resume[k] = [];
+  }
+  return out;
+}
+
+// The Save button on the Profile screen still reads the raw JSON box as the
+// source of truth, so every structured edit has to be mirrored back into it or
+// saving would silently revert whatever was just typed.
+function syncResumeJson() {
+  const box = document.getElementById("pResumeJson");
+  if (box) box.value = JSON.stringify(PROFILE.resume, null, 2);
+}
+
+function onResumeEdited() {
+  syncResumeJson();
+  refreshMountedEditors();
+}
+
+// Both screens can hold a live copy of an editor; re-render whichever are on the
+// page so the wizard and Profile never show different data.
+function refreshMountedEditors() {
+  ["obExperienceMount", "pExperienceMount"].forEach(renderExperienceEditor);
+  ["obSkillsMount", "pSkillsMount"].forEach(renderSkillsEditor);
+  ["obEducationMount", "pEducationMount"].forEach(renderEducationEditor);
+}
+
+function renderExperienceEditor(mountId) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+  const list = PROFILE.resume.experience;
+  // Inside the wizard the surrounding step card already supplies the heading
+  // and the explanation; only the Profile screen needs the editor to label
+  // itself, because there the card is titled "Master resume".
+  const inWizard = mountId.startsWith("ob");
+  mount.className = "list-editor";
+  mount.innerHTML =
+    (inWizard ? "" : `<h3>Work experience</h3>`) +
+    (inWizard ? "" : `<p class="sub" style="margin:0 0 10px;">Your own wording is reused as-is. Nothing here gets rewritten into something you didn't do.</p>`) +
+    (list.length ? "" : `<div class="empty-hint">No roles added yet.</div>`) +
+    list.map((role, i) => `
+      <div class="entry-card" data-i="${i}">
+        <div class="entry-head">
+          <span class="entry-num">Role ${i + 1}</span>
+          <button type="button" class="entry-remove" data-remove>Remove</button>
+        </div>
+        <div class="entry-grid">
+          <div class="field"><label>Job title</label><input data-f="title" value="${escapeHtml(role.title)}" placeholder="Business Analyst"></div>
+          <div class="field"><label>Company</label><input data-f="company" value="${escapeHtml(role.company)}" placeholder="Axis Max Life"></div>
+          <div class="field"><label>Dates</label><input data-f="dates" value="${escapeHtml(role.dates)}" placeholder="Mar 2022 – present"></div>
+          <div class="field"><label>Location</label><input data-f="location" value="${escapeHtml(role.location)}"></div>
+        </div>
+        <div class="field" style="margin-bottom:6px;"><label>What you did</label></div>
+        ${(role.achievements || []).map((b, bi) => `
+          <div class="bullet-row">
+            <textarea data-b="${bi}" placeholder="Cut policy issuance turnaround from 6 days to 2">${escapeHtml(b)}</textarea>
+            <button type="button" class="entry-remove" data-remove-bullet="${bi}">×</button>
+          </div>`).join("")}
+        <button type="button" class="btn btn-ghost btn-sm" data-add-bullet>+ Add a point</button>
+      </div>`).join("") +
+    `<button type="button" class="btn btn-outline btn-sm" data-add-role>+ Add a role</button>`;
+
+  mount.querySelectorAll("[data-add-role]").forEach(b => b.addEventListener("click", () => {
+    list.push({ title: "", company: "", location: "", dates: "", achievements: [""] });
+    onResumeEdited();
+  }));
+
+  mount.querySelectorAll(".entry-card").forEach(card => {
+    const i = +card.getAttribute("data-i");
+    card.querySelector("[data-remove]").addEventListener("click", () => {
+      list.splice(i, 1);
+      onResumeEdited();
+    });
+    card.querySelectorAll("[data-f]").forEach(input => {
+      input.addEventListener("input", () => {
+        list[i][input.getAttribute("data-f")] = input.value;
+        syncResumeJson();
+      });
+    });
+    card.querySelectorAll("[data-b]").forEach(ta => {
+      ta.addEventListener("input", () => {
+        list[i].achievements[+ta.getAttribute("data-b")] = ta.value;
+        syncResumeJson();
+      });
+    });
+    card.querySelectorAll("[data-remove-bullet]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        list[i].achievements.splice(+btn.getAttribute("data-remove-bullet"), 1);
+        onResumeEdited();
+      });
+    });
+    card.querySelector("[data-add-bullet]").addEventListener("click", () => {
+      (list[i].achievements = list[i].achievements || []).push("");
+      onResumeEdited();
+    });
+  });
+}
+
+function renderEducationEditor(mountId) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+  const list = PROFILE.resume.education;
+  mount.className = "list-editor";
+  mount.innerHTML =
+    `<h3>Education</h3>` +
+    (list.length ? "" : `<div class="empty-hint">Nothing added yet.</div>`) +
+    list.map((ed, i) => `
+      <div class="entry-card" data-i="${i}">
+        <div class="entry-head">
+          <span class="entry-num">Entry ${i + 1}</span>
+          <button type="button" class="entry-remove" data-remove>Remove</button>
+        </div>
+        <div class="entry-grid">
+          <div class="field"><label>Degree</label><input data-f="degree" value="${escapeHtml(ed.degree)}" placeholder="B.Tech, Computer Science"></div>
+          <div class="field"><label>Institution</label><input data-f="school" value="${escapeHtml(ed.school)}"></div>
+        </div>
+        <div class="field"><label>Dates</label><input data-f="dates" value="${escapeHtml(ed.dates)}" placeholder="2014 – 2018"></div>
+      </div>`).join("") +
+    `<button type="button" class="btn btn-outline btn-sm" data-add>+ Add education</button>`;
+
+  mount.querySelector("[data-add]").addEventListener("click", () => {
+    list.push({ degree: "", school: "", dates: "" });
+    onResumeEdited();
+  });
+  mount.querySelectorAll(".entry-card").forEach(card => {
+    const i = +card.getAttribute("data-i");
+    card.querySelector("[data-remove]").addEventListener("click", () => { list.splice(i, 1); onResumeEdited(); });
+    card.querySelectorAll("[data-f]").forEach(input => {
+      input.addEventListener("input", () => { list[i][input.getAttribute("data-f")] = input.value; syncResumeJson(); });
+    });
+  });
+}
+
+function renderSkillsEditor(mountId) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+  const list = PROFILE.resume.skills;
+  mount.className = "list-editor";
+  mount.innerHTML =
+    `<h3>Skills</h3>` +
+    (mountId.startsWith("ob") ? "" : `<p class="sub" style="margin:0 0 10px;">Matched against the job's requirements, so list what you'd defend in an interview.</p>`) +
+    `<div class="chip-input-row">
+       <input data-skill-input placeholder="e.g. Requirement gathering — press Enter">
+       <button type="button" class="btn btn-outline btn-sm" data-skill-add>Add</button>
+     </div>` +
+    (list.length
+      ? `<div class="chip-list">${list.map((s, i) => `<span class="chip-tag">${escapeHtml(s)}<button type="button" data-rm="${i}" aria-label="Remove ${escapeHtml(s)}">×</button></span>`).join("")}</div>`
+      : `<div class="empty-hint">No skills added yet.</div>`);
+
+  const input = mount.querySelector("[data-skill-input]");
+  const add = () => {
+    // Accept a pasted comma-separated list too — retyping 20 skills one at a
+    // time is exactly the kind of friction that makes people abandon setup.
+    const parts = input.value.split(",").map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return;
+    parts.forEach(p => { if (!list.some(s => s.toLowerCase() === p.toLowerCase())) list.push(p); });
+    input.value = "";
+    onResumeEdited();
+    const again = document.getElementById(mountId)?.querySelector("[data-skill-input]");
+    if (again) again.focus();
+  };
+  mount.querySelector("[data-skill-add]").addEventListener("click", add);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); add(); } });
+  mount.querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => {
+    list.splice(+b.getAttribute("data-rm"), 1);
+    onResumeEdited();
+  }));
+}
+
+/* ---------- first-run setup wizard ---------- */
+
+const OB_TOTAL = 5;
+let OB_STEP = 1;
+
+// Step 1 offers to read a resume file, but that parse runs through the user's
+// own AI provider — and a brand-new account has no key yet. Left unguarded the
+// first button a new user sees fails with "Add an AI provider key first" and
+// points nowhere. Show the real prerequisite instead, and keep typing it in
+// available as the path that works without a key.
+function obSyncUploadAvailability() {
+  const hasKey = configuredProviders().length > 0;
+  const btn = document.getElementById("btnObUpload");
+  const note = document.getElementById("obUploadBlocked");
+  btn.disabled = !hasKey;
+  note.style.display = hasKey ? "none" : "block";
+}
+
+function obShowStep(n) {
+  OB_STEP = Math.min(Math.max(n, 1), OB_TOTAL);
+  document.querySelectorAll(".ob-step").forEach(s => {
+    s.classList.toggle("active", +s.getAttribute("data-ob-step") === OB_STEP);
+  });
+  document.getElementById("obProgress").innerHTML =
+    Array.from({ length: OB_TOTAL }, (_, i) => `<span class="${i < OB_STEP ? "done" : ""}"></span>`).join("");
+  document.getElementById("obError").textContent = "";
+  document.getElementById("btnObBack").style.visibility = OB_STEP === 1 ? "hidden" : "visible";
+  document.getElementById("btnObNext").textContent = OB_STEP === OB_TOTAL ? "Finish setup" : "Continue";
+  if (OB_STEP === 1) obSyncUploadAvailability();
+  if (OB_STEP === 3) renderExperienceEditor("obExperienceMount");
+  if (OB_STEP === 4) { renderSkillsEditor("obSkillsMount"); renderEducationEditor("obEducationMount"); }
+  window.scrollTo(0, 0);
+}
+
+function obCollectIdentity() {
+  PROFILE.identity.name = document.getElementById("obName").value.trim();
+  PROFILE.identity.email = document.getElementById("obEmail").value.trim();
+  PROFILE.identity.phone = document.getElementById("obPhone").value.trim();
+  PROFILE.identity.location = document.getElementById("obLocation").value.trim();
+  PROFILE.identity.linkedin = document.getElementById("obLinkedin").value.trim();
+}
+
+function obCollectStanding() {
+  PROFILE.standingAnswers.notice_period = document.getElementById("obNotice").value.trim();
+  PROFILE.standingAnswers.current_ctc = document.getElementById("obCurrentCtc").value.trim();
+  PROFILE.standingAnswers.expected_ctc = document.getElementById("obExpectedCtc").value.trim();
+  PROFILE.standingAnswers.location = PROFILE.identity.location || "";
+  PROFILE.standingAnswers.open_to_relocation =
+    document.getElementById("obReloYes").classList.contains("on") ? "yes" : "no";
+}
+
+// Only two things are actually enforced, and both are enforced because the app
+// genuinely cannot work without them: a name (it goes on the resume) and some
+// substance to match against (a role or a skill). Everything else is optional —
+// a setup wall is worse than a thin profile the user can top up later.
+function obValidate(step) {
+  if (step === 2 && !document.getElementById("obName").value.trim()) {
+    return "Your name goes on every resume — please add it.";
+  }
+  if (step === 3) {
+    const roles = PROFILE.resume.experience.filter(r => (r.title || "").trim() || (r.company || "").trim());
+    if (!roles.length) return "Add at least one role, or the fit check has nothing to compare against.";
+  }
+  return null;
+}
+
+function startOnboarding() {
+  document.getElementById("obName").value = PROFILE.identity.name || CURRENT_USER?.displayName || "";
+  document.getElementById("obEmail").value = PROFILE.identity.email || CURRENT_USER?.email || "";
+  document.getElementById("obPhone").value = PROFILE.identity.phone || "";
+  document.getElementById("obLocation").value = PROFILE.identity.location || "";
+  document.getElementById("obLinkedin").value = PROFILE.identity.linkedin || "";
+  document.getElementById("obNotice").value = PROFILE.standingAnswers.notice_period || "";
+  document.getElementById("obCurrentCtc").value = PROFILE.standingAnswers.current_ctc || "";
+  document.getElementById("obExpectedCtc").value = PROFILE.standingAnswers.expected_ctc || "";
+  obSetRelo(PROFILE.standingAnswers.open_to_relocation !== "no");
+  obShowStep(1);
+  showScreen("onboarding");
+}
+
+function obSetRelo(yes) {
+  document.getElementById("obReloYes").classList.toggle("on", yes);
+  document.getElementById("obReloNo").classList.toggle("on", !yes);
+}
+document.getElementById("obReloYes").addEventListener("click", () => obSetRelo(true));
+document.getElementById("obReloNo").addEventListener("click", () => obSetRelo(false));
+
+document.getElementById("btnObBack").addEventListener("click", () => {
+  if (OB_STEP === 2) obCollectIdentity();
+  if (OB_STEP === 5) obCollectStanding();
+  obShowStep(OB_STEP - 1);
+});
+
+document.getElementById("btnObNext").addEventListener("click", async () => {
+  if (OB_STEP === 2) obCollectIdentity();
+  if (OB_STEP === 5) obCollectStanding();
+
+  const problem = obValidate(OB_STEP);
+  if (problem) { document.getElementById("obError").textContent = problem; return; }
+
+  if (OB_STEP < OB_TOTAL) { obShowStep(OB_STEP + 1); return; }
+
+  // Finish: drop the placeholder rows the editors create so an empty "Add a
+  // role" click doesn't persist a blank employer into every future resume.
+  PROFILE.resume.experience = PROFILE.resume.experience
+    .filter(r => (r.title || "").trim() || (r.company || "").trim())
+    .map(r => ({ ...r, achievements: (r.achievements || []).map(b => b.trim()).filter(Boolean) }));
+  PROFILE.resume.education = PROFILE.resume.education.filter(e => (e.degree || "").trim() || (e.school || "").trim());
+
+  const btn = document.getElementById("btnObNext");
+  btn.disabled = true;
+  try {
+    await saveProfile();
+    localStorage.removeItem(OB_DISMISSED_KEY);
+    toast("Profile saved — you're set up");
+    showScreen("home");
+  } catch (e) {
+    document.getElementById("obError").textContent = "Couldn't save your profile. Check your connection and try again.";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("btnObSkip").addEventListener("click", async () => {
+  if (OB_STEP === 2) obCollectIdentity();
+  if (OB_STEP === 5) obCollectStanding();
+  try { await saveProfile(); } catch (e) {}
+  // Remember the choice, or the next sign-in drops them straight back into the
+  // wizard they just walked away from. The Profile screen keeps a way back in.
+  localStorage.setItem(OB_DISMISSED_KEY, "1");
+  toast("Saved what you've entered — finish anytime from Profile");
+  showScreen("profile");
+  fillProfileForm();
+});
+
+document.getElementById("btnObManual").addEventListener("click", () => obShowStep(2));
+
+// Reachable after "Finish later", and useful to anyone who'd rather be walked
+// through the fields than hunt for them on this screen.
+document.getElementById("btnRunSetup").addEventListener("click", () => startOnboarding());
+document.getElementById("btnObUpload").addEventListener("click", () => document.getElementById("fileObResume").click());
+document.getElementById("fileObResume").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ok = await handleResumeUpload(file, {
+    statusEl: document.getElementById("obUploadStatus"),
+    buttonEl: document.getElementById("btnObUpload")
+  });
+  e.target.value = "";
+  // Straight into review — the parse is good but not infallible, and the user
+  // should see what was extracted before it's used on a real application.
+  if (ok) {
+    document.getElementById("obName").value = PROFILE.identity.name || "";
+    document.getElementById("obEmail").value = PROFILE.identity.email || "";
+    document.getElementById("obPhone").value = PROFILE.identity.phone || "";
+    document.getElementById("obLocation").value = PROFILE.identity.location || "";
+    document.getElementById("obLinkedin").value = PROFILE.identity.linkedin || "";
+    obShowStep(2);
+  }
+});
+
 function fillProfileForm() {
   document.getElementById("pName").value = PROFILE.identity.name || "";
   document.getElementById("pLocation").value = PROFILE.identity.location || "";
@@ -974,6 +1389,9 @@ function fillProfileForm() {
   document.getElementById("pExpectedCtc").value = PROFILE.standingAnswers.expected_ctc || "";
   setRelo(PROFILE.standingAnswers.open_to_relocation === "yes");
   document.getElementById("pResumeJson").value = JSON.stringify(PROFILE.resume, null, 2);
+  renderExperienceEditor("pExperienceMount");
+  renderSkillsEditor("pSkillsMount");
+  renderEducationEditor("pEducationMount");
   renderProviderList();
 }
 function setRelo(yes) {
@@ -1030,19 +1448,26 @@ document.getElementById("btnUploadResume").addEventListener("click", () => {
   fileResume.click();
 });
 
-fileResume.addEventListener("change", e => {
+fileResume.addEventListener("change", async e => {
   const file = e.target.files[0];
   // Reset so re-picking the same file still fires a change event.
   e.target.value = "";
-  if (file) handleResumeUpload(file);
+  if (!file) return;
+  // Repaint the whole Profile screen on success — the parse fills identity
+  // fields too, not just the resume arrays.
+  if (await handleResumeUpload(file)) fillProfileForm();
 });
 
-async function handleResumeUpload(file) {
+// Serves both the Profile screen and the first-run wizard, which own different
+// status/button elements — hence the injected targets rather than hard-coded ids.
+// Returns true only on a successful import, so the wizard knows whether to
+// advance the user to the review step.
+async function handleResumeUpload(file, targets) {
   const sel = currentSelection();
-  if (!sel) { toast("Add an AI provider key first"); return; }
+  if (!sel) { toast("Add an AI provider key first"); return false; }
 
-  const status = document.getElementById("resumeUploadStatus");
-  const btn = document.getElementById("btnUploadResume");
+  const status = targets?.statusEl || document.getElementById("resumeUploadStatus");
+  const btn = targets?.buttonEl || document.getElementById("btnUploadResume");
   const setStatus = msg => { status.textContent = msg; };
 
   btn.disabled = true;
@@ -1072,15 +1497,19 @@ async function handleResumeUpload(file) {
     }
     if (parsed.resume) PROFILE.resume = parsed.resume;
 
+    PROFILE = normalizeProfile(PROFILE);
     await saveProfile();
-    fillProfileForm();
+    refreshMountedEditors();
+    syncResumeJson();
 
     const r = parsed.resume || {};
-    setStatus(`Imported ${(r.experience || []).length} role(s), ${(r.education || []).length} education entr(ies), ${(r.skills || []).length} skills. Review the fields above and edit anything that looks off.`);
+    setStatus(`Imported ${(r.experience || []).length} role(s), ${(r.education || []).length} education entr(ies), ${(r.skills || []).length} skills. Review and edit anything that looks off.`);
     toast("Resume imported");
+    return true;
   } catch (err) {
     setStatus("");
     toast(err.message || "Could not read that resume");
+    return false;
   } finally {
     btn.disabled = false;
   }

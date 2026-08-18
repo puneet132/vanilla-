@@ -172,9 +172,79 @@
       <div id="logDetailBody"></div>
     </section>
 
+    <!-- First-run setup. The app draws only on what's in the profile, so an empty
+         profile can't produce a useful application — this collects the minimum
+         before the first capture instead of failing at the fit check. -->
+    <section id="screen-onboarding" class="screen">
+      <h1 id="obTitle">Set up your profile</h1>
+      <p class="sub" id="obSubtitle">Everything the app writes comes from here. It takes a couple of minutes once, then you're set.</p>
+      <div class="ob-progress" id="obProgress"></div>
+
+      <div class="card ob-step" data-ob-step="1">
+        <h2 style="margin-top:0;">Start with your resume</h2>
+        <p class="sub" style="margin-bottom:10px;">Upload it and the fields fill themselves. Nothing is invented — only what's actually written in your file. You can correct anything on the next steps.</p>
+        <button class="btn btn-primary" id="btnObUpload"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14V5m0 0L6.8 8.2M10 5l3.2 3.2"/><path d="M4 14.5v1A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg> Upload resume (.pdf or .docx)</button>
+        <input type="file" id="fileObResume" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        <div class="sub" id="obUploadStatus" style="margin-top:8px;"></div>
+        <div id="obUploadBlocked" style="display:none; margin-top:10px;">
+          <p class="sub" style="margin:0 0 8px;">Reading a resume file uses your own AI provider, so it needs an API key first. Gemini has a real free tier — a good place to start. You can also just type your details in below.</p>
+          <button class="btn btn-outline btn-sm" data-nav="profile">Add an API key</button>
+        </div>
+        <div class="hr"></div>
+        <button class="btn btn-ghost btn-sm" id="btnObManual">I don't have a file — let me type it in</button>
+      </div>
+
+      <div class="card ob-step" data-ob-step="2">
+        <h2 style="margin-top:0;">Your details</h2>
+        <p class="sub" style="margin-bottom:10px;">These go on every resume and email the app produces.</p>
+        <div class="field"><label>Name</label><input id="obName" placeholder="Puneet Gupta"></div>
+        <div class="field"><label>Email</label><input id="obEmail" placeholder="you@example.com"></div>
+        <div class="field"><label>Phone</label><input id="obPhone"></div>
+        <div class="field"><label>Location</label><input id="obLocation" placeholder="Jaipur, India"></div>
+        <div class="field"><label>LinkedIn</label><input id="obLinkedin"></div>
+      </div>
+
+      <div class="card ob-step" data-ob-step="3">
+        <h2 style="margin-top:0;">Work experience</h2>
+        <p class="sub" style="margin-bottom:10px;">This is what the fit check reads. Add at least one role — the bullets are your own wording and get reused, never rewritten into something you didn't do.</p>
+        <div id="obExperienceMount"></div>
+      </div>
+
+      <div class="card ob-step" data-ob-step="4">
+        <h2 style="margin-top:0;">Skills &amp; education</h2>
+        <p class="sub" style="margin-bottom:10px;">Skills are matched against the job's requirements, so list the ones you'd actually defend in an interview.</p>
+        <div id="obSkillsMount"></div>
+        <div class="hr"></div>
+        <div id="obEducationMount"></div>
+      </div>
+
+      <div class="card ob-step" data-ob-step="5">
+        <h2 style="margin-top:0;">Standing answers</h2>
+        <p class="sub" style="margin-bottom:10px;">Recruiters ask these every time. Answer once and they're filled in automatically. Leave any of them blank if you'd rather not say.</p>
+        <div class="field"><label>Notice period</label><input id="obNotice" placeholder="e.g. 60 days"></div>
+        <div class="field"><label>Current CTC</label><input id="obCurrentCtc" placeholder="e.g. ₹14 LPA"></div>
+        <div class="field"><label>Expected CTC</label><input id="obExpectedCtc" placeholder="e.g. ₹20 LPA"></div>
+        <div class="field">
+          <label>Open to relocation</label>
+          <div class="toggle-row">
+            <button type="button" id="obReloYes">Yes</button>
+            <button type="button" id="obReloNo">No</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub" id="obError" style="color:var(--red); min-height:18px; margin-bottom:8px;"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btnObBack">Back</button>
+        <button class="btn btn-primary" id="btnObNext" style="flex:2;">Continue</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btnObSkip" style="margin-top:10px;">Finish later</button>
+    </section>
+
     <section id="screen-profile" class="screen">
       <h1>Profile</h1>
       <p class="sub">This is the only source of truth the app draws from. Nothing gets invented beyond what's here.</p>
+      <button class="btn btn-ghost btn-sm" id="btnRunSetup" style="margin-bottom:14px;">Walk me through setup</button>
 
       <div class="card">
         <h2 style="margin-top:0;">AI providers</h2>
@@ -214,9 +284,16 @@
         <div class="sub" id="resumeUploadStatus" style="margin-top:8px;"></div>
 
         <div class="hr"></div>
+        <div id="pExperienceMount"></div>
+        <div class="hr"></div>
+        <div id="pSkillsMount"></div>
+        <div class="hr"></div>
+        <div id="pEducationMount"></div>
+
+        <div class="hr"></div>
         <details>
           <summary class="sub" style="cursor:pointer;">Edit the raw data</summary>
-          <p class="sub" style="margin:10px 0;">Advanced — this is what the app actually reads. Uploading a resume overwrites it.</p>
+          <p class="sub" style="margin:10px 0;">Advanced — this is what the app actually reads. Edits above are reflected here when you save; editing this box directly overrides them.</p>
           <div class="field"><textarea id="pResumeJson" style="min-height:320px; font-family:ui-monospace,Menlo,monospace; font-size:12.5px;"></textarea></div>
         </details>
       </div>

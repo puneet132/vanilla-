@@ -201,3 +201,60 @@ a.link{color:var(--accent); text-decoration:underline; font-size:13px;}
   main{max-width:760px; padding:40px 48px;}
   .sidebar{padding-top:32px;}
 }
+
+/* ---------- first-run setup wizard ---------- */
+.ob-progress{display:flex; gap:6px; margin:0 0 18px;}
+.ob-progress span{
+  flex:1; height:4px; border-radius:999px; background:var(--line-soft);
+  transition:background-color .2s ease;
+}
+.ob-progress span.done{background:var(--accent);}
+.ob-step{display:none;}
+.ob-step.active{display:block;}
+
+/* ---------- structured list editors (experience / education / skills) ----------
+   Shared by the wizard and the Profile screen so the two can't drift apart. */
+.list-editor h3{
+  font-family:var(--font-display); font-size:15px; font-weight:600;
+  margin:0 0 4px; color:var(--ink);
+}
+.entry-card{
+  border:1px solid var(--line); border-radius:var(--radius-md);
+  padding:14px; margin-bottom:10px; background:var(--paper);
+}
+.entry-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;}
+.entry-head .entry-num{font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.04em; text-transform:uppercase;}
+.entry-remove{
+  background:none; border:none; cursor:pointer; padding:4px 8px;
+  color:var(--muted); font-size:12.5px; font-weight:600; border-radius:var(--radius-sm);
+}
+.entry-remove:hover{background:var(--red-tint); color:var(--red);}
+.entry-grid{display:grid; grid-template-columns:1fr 1fr; gap:0 12px;}
+@media (max-width:560px){ .entry-grid{grid-template-columns:1fr;} }
+
+.bullet-row{display:flex; gap:8px; align-items:flex-start; margin-bottom:6px;}
+.bullet-row textarea{
+  flex:1; min-height:44px; font-family:var(--font-body); font-size:13.5px;
+  padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius-sm);
+  background:var(--card); color:var(--ink); resize:vertical;
+}
+.bullet-row textarea:focus{outline:none; border-color:var(--accent);}
+
+.empty-hint{
+  border:1px dashed var(--line); border-radius:var(--radius-md);
+  padding:16px; text-align:center; color:var(--muted); font-size:13.5px; margin-bottom:10px;
+}
+
+.chip-input-row{display:flex; gap:8px; margin-bottom:10px;}
+.chip-input-row input{flex:1;}
+.chip-list{display:flex; flex-wrap:wrap; gap:6px;}
+.chip-tag{
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--line-soft); color:var(--ink); border-radius:999px;
+  padding:5px 6px 5px 11px; font-size:13px; font-weight:500;
+}
+.chip-tag button{
+  background:none; border:none; cursor:pointer; color:var(--muted);
+  font-size:15px; line-height:1; padding:0 4px; border-radius:999px;
+}
+.chip-tag button:hover{color:var(--red);}
