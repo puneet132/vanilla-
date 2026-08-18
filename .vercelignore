@@ -1,3 +1,8 @@
-# Tests are not part of the app and the project root is served statically —
-# without this they'd be fetchable at /test/*.js on the live site.
+# The project root is served statically, so anything left here is publicly
+# fetchable on the deployed site.
 test
+
+# Vercel installs dependencies from package.json during the build; uploading a
+# local node_modules only makes the deploy slow (and can ship the wrong
+# platform's binaries).
+node_modules
