@@ -4,6 +4,7 @@
 const { verifyIdToken, firestore } = require("./_firebaseAdmin");
 const { decrypt } = require("./_crypto");
 const { callProviderWithFallback, classifyProviderError, safeErrorDetail, PROVIDERS } = require("./_llm");
+const { completeResume } = require("./_resume");
 
 const ERROR_MESSAGES = {
   invalid_key: (p) => `Your ${p} key looks invalid, expired, or revoked — remove and re-add it in Profile → AI providers.`,
@@ -44,13 +45,17 @@ const GENERATE_TOOL = {
             items: {
               type: "object",
               properties: { title: { type: "string" }, company: { type: "string" }, location: { type: "string" }, dates: { type: "string" }, bullets: { type: "array", items: { type: "string" } } },
-              required: ["title", "company", "dates"]
+              required: ["title", "company", "dates", "bullets"]
             }
           },
           education: { type: "array", items: { type: "object", properties: { degree: { type: "string" }, school: { type: "string" }, dates: { type: "string" } }, required: ["degree", "school"] } },
           projects: { type: "array", items: { type: "object", properties: { name: { type: "string" }, description: { type: "string" } }, required: ["name", "description"] } },
           what_changed: { type: "array", items: { type: "string" } }
-        }
+        },
+        // Without these the model happily returns a title line, a summary and a
+        // skills list and calls it a resume — which is what produced .docx
+        // files that opened with no work history in them.
+        required: ["title_line", "summary", "skills", "experience", "education"]
       },
       email: {
         type: "object",
@@ -58,13 +63,15 @@ const GENERATE_TOOL = {
         required: ["subject", "body"]
       }
     },
-    required: ["fit", "email"]
+    required: ["fit", "resume", "email"]
   }
 };
 
 const SYSTEM = `You are helping one real person apply to jobs. You will receive a structured job description (JD) and his profile/master-resume data (the only source of truth about his experience).
 
 Non-negotiable rule: you may reorder, reframe, retitle, and rephrase — you may NEVER invent. Every claim in the tailored resume and email must trace back to something present in the profile data. If the JD wants a tool, certification, domain, or years of experience that isn't in the profile, leave it out of the resume entirely — do not imply it. If it's a real gap worth naming, put one honest line about it in fit.gap_note and let the email address it, don't hide it.
+
+The resume you return is the whole document, not a set of edits to one. Reproduce EVERY role in the profile's work history — each with its title, company, location, dates, and at least two bullets drawn from that role's achievements. Never drop a job: an omitted role reads as an unexplained employment gap. De-emphasise a less relevant role by giving it fewer, shorter bullets, not by leaving it out. Carry education across in full. "Tailoring" means choosing which of his real achievements to lead with and how to word them against this JD — it never means returning a summary and a skills list on their own.
 
 Fit assessment must be a thoughtful judgment call, not a rubber stamp:
 - "mismatch" for: a required degree/qualification the profile doesn't show, an experience band the profile is well above (not just meeting or slightly under), or a role explicitly targeting a different background than the profile's.
@@ -101,7 +108,11 @@ module.exports = async (req, res) => {
 
   try {
     const { result, model: usedModel, fellBackFrom } = await callProviderWithFallback({ provider, model, apiKey, system: SYSTEM, text, tool: GENERATE_TOOL });
-    return res.status(200).json({ ...result, _model: usedModel, _fellBackFrom: fellBackFrom });
+    // The schema now demands a full resume, but a schema is a request, not a
+    // guarantee. Backfill whatever the model still left out from the master
+    // profile so a blank-looking .docx can't reach the user.
+    const resume = completeResume(result.resume, profile);
+    return res.status(200).json({ ...result, resume, _model: usedModel, _fellBackFrom: fellBackFrom });
   } catch (err) {
     console.error("job-generate failed:", err);
     const code = classifyProviderError(err);

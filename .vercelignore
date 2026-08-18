@@ -1,0 +1,3 @@
+# Tests are not part of the app and the project root is served statically —
+# without this they'd be fetchable at /test/*.js on the live site.
+test
