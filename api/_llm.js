@@ -151,7 +151,11 @@ async function callOpenAI({ model, apiKey, system, text, image, tool }) {
   const data = await r.json();
   const call = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!call) throw new Error("OpenAI returned no structured result");
-  return JSON.parse(call.function.arguments);
+  try {
+    return JSON.parse(call.function.arguments);
+  } catch (e) {
+    throw new Error("OpenAI returned malformed JSON");
+  }
 }
 
 // Gemini uses JSON mode (responseMimeType + responseSchema) rather than the
@@ -222,7 +226,11 @@ async function callOpenRouter({ model, apiKey, system, text, image, tool }) {
   if (data.error) throw providerError("OpenRouter", data.error.code || 502, JSON.stringify(data.error));
   const call = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!call) throw new Error("OpenRouter returned no structured result");
-  return JSON.parse(call.function.arguments);
+  try {
+    return JSON.parse(call.function.arguments);
+  } catch (e) {
+    throw new Error("OpenRouter returned malformed JSON");
+  }
 }
 
 // tool: { name, description, schema } — a plain JSON-schema object shared across
