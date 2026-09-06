@@ -89,7 +89,7 @@ push then redeploys automatically.
 
 Two routes, both ending in something you send yourself — nothing auto-sends, ever.
 
-- **Save to Gmail drafts.** Creates a real Gmail draft with the tailored resume attached.
+- **Save to Gmail drafts.** Creates a real Gmail draft with your resume attached.
   Asks for Google's `gmail.compose` scope the first time you use it — deliberately a
   second, separate consent prompt rather than an extra scope bolted onto sign-in, so
   signing in never implies mailbox access. That scope can create and update drafts; it
@@ -97,6 +97,19 @@ Two routes, both ending in something you send yourself — nothing auto-sends, e
   the session only and is dropped on sign-out.
 - **Download + mailto.** Downloads the `.docx` and opens the draft in whatever mail
   client the OS has. No attachment — you attach the downloaded file yourself.
+
+### Which resume gets attached
+
+Your own master resume, by default — built into a `.docx` verbatim, nothing rewritten.
+
+Tailoring is opt-in per application, behind a **Get Tailored Resume** button on the
+review screen. It is a second provider call, made only when you press it: most
+applications go out with your own resume, and generating a document nobody opens
+costs real money on a metered key and real latency on a free one. Once generated you
+can switch the attachment either way before sending.
+
+`want:"apply"` (the default) returns the fit verdict and email; `want:"resume"` returns
+the tailored resume. Two calls, two prompts — see `api/job-generate.js`.
 
 ## Testing
 

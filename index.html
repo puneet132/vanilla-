@@ -145,9 +145,16 @@
       </div>
 
       <div class="card">
-        <h2 style="margin-top:0;">Tailored resume</h2>
+        <h2 style="margin-top:0;" id="resumeCardTitle">Resume</h2>
+        <div class="sub" id="resumeAttachNote" style="margin-bottom:10px;"></div>
         <div id="resumePreview" style="font-size:14px; color:var(--ink2); line-height:1.6;"></div>
-        <button class="btn btn-outline" id="btnDownloadResume" style="margin-top:10px;"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9m0 0-3.2-3.2M10 12l3.2-3.2"/><path d="M4 14.5v1a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg> Download .docx</button>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-outline btn-sm" id="btnDownloadResume"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9m0 0-3.2-3.2M10 12l3.2-3.2"/><path d="M4 14.5v1a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg> Download .docx</button>
+          <button class="btn btn-outline btn-sm" id="btnTailorResume"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3 1.6 3.9L15.5 8.5l-3.9 1.6L10 14l-1.6-3.9L4.5 8.5l3.9-1.6z"/><path d="M15 13.5 15.7 15l1.5.7-1.5.7-.7 1.5-.7-1.5-1.5-.7 1.5-.7z"/></svg> Get Tailored Resume</button>
+        </div>
+        <div class="btn-row" id="attachToggleRow" style="margin-top:8px; display:none;">
+          <button class="btn btn-outline btn-sm" id="btnAttachToggle"></button>
+        </div>
       </div>
 
       <div class="card" id="whatChangedCard">

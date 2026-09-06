@@ -1,5 +1,7 @@
 import { auth, db, googleProvider, gmailProvider, signInWithPopup, reauthenticateWithPopup, onAuthStateChanged, signOut, GoogleAuthProvider } from "./firebase-init.js";
 import { buildMimeMessage, toGmailRaw } from "./mime.mjs";
+import { masterResumeToDocxShape, masterResumeIsAttachable } from "./master-resume.mjs";
+import { gmailErrorMessage } from "./gmail-error.mjs";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -81,7 +83,7 @@ const MODEL_REGISTRY = {
 let CURRENT_USER = null;
 let PROFILE = null;
 let PROVIDER_STATUS = { gemini: { configured: false }, openrouter: { configured: false }, anthropic: { configured: false }, openai: { configured: false } };
-let SESSION = { imageB64: null, jd: null, generation: null, mismatchOverridden: false, provider: null, model: null };
+let SESSION = { imageB64: null, jd: null, generation: null, mismatchOverridden: false, provider: null, model: null, attachSource: "master" };
 
 /* ---------- nav ---------- */
 function showScreen(id) {
@@ -624,7 +626,7 @@ function renderFitScreen(fit) {
 }
 document.getElementById("btnDiscardMismatch").addEventListener("click", async () => {
   await logCurrentApplication("skipped");
-  SESSION = { imageB64: null, jd: null, generation: null, mismatchOverridden: false, provider: SESSION.provider, model: SESSION.model };
+  SESSION = { imageB64: null, jd: null, generation: null, mismatchOverridden: false, provider: SESSION.provider, model: SESSION.model, attachSource: "master" };
   showScreen("home");
 });
 document.getElementById("btnApplyAnyway").addEventListener("click", async () => {
@@ -662,7 +664,22 @@ function renderReview() {
   document.getElementById("emailSubject").value = gen.email.subject || "";
   document.getElementById("emailBody").value = gen.email.body || "";
 
-  const r = gen.resume || {};
+  renderResumeCard();
+}
+
+// ---------------------------------------------------------------------------
+// Which resume gets attached
+//
+// The master resume is the default because it is the one the user actually
+// wrote. Tailoring is a deliberate extra step: it costs a provider call, and a
+// model rewriting someone's work history is a thing they should opt into per
+// application rather than have happen to every application silently.
+// ---------------------------------------------------------------------------
+
+// Both shapes render identically here — masterResumeToDocxShape exists so the
+// master resume arrives in the same shape the generated one already has.
+function resumePreviewHtml(r) {
+  r = r || {};
   let html = "";
   if (r.title_line) html += `<div style="font-weight:700; margin-bottom:6px;">${escapeHtml(r.title_line)}</div>`;
   if (r.summary) html += `<div style="margin-bottom:10px;">${escapeHtml(r.summary)}</div>`;
@@ -695,18 +712,57 @@ function renderReview() {
       html += `<div>${escapeHtml([e.degree, e.school, e.dates].filter(Boolean).join(" — "))}</div>`;
     });
   }
+  return html;
+}
 
-  document.getElementById("resumePreview").innerHTML = html || "<span class='sub'>No resume content generated.</span>";
+function tailoredResume() {
+  return SESSION.generation && SESSION.generation.resume ? SESSION.generation.resume : null;
+}
+
+function usingTailored() {
+  return SESSION.attachSource === "tailored" && Boolean(tailoredResume());
+}
+
+/** The resume object that will actually be built into the .docx. */
+function activeResume() {
+  return usingTailored() ? tailoredResume() : masterResumeToDocxShape(PROFILE.resume);
+}
+
+function renderResumeCard() {
+  const tailored = tailoredResume();
+  const onTailored = usingTailored();
+  const r = activeResume();
+
+  document.getElementById("resumeCardTitle").textContent = onTailored ? "Tailored resume" : "Your resume";
+  document.getElementById("resumeAttachNote").textContent = onTailored
+    ? "The AI-tailored version will be attached to the email."
+    : "Your own resume will be attached, exactly as you wrote it — nothing rewritten.";
+
+  const html = resumePreviewHtml(r);
+  document.getElementById("resumePreview").innerHTML = html ||
+    "<span class='sub'>Your profile has no resume content yet — add or upload one in Profile.</span>";
+
+  // Offer tailoring once per application; after that the toggle takes over.
+  const btnTailor = document.getElementById("btnTailorResume");
+  btnTailor.style.display = tailored ? "none" : "";
+  btnTailor.disabled = !masterResumeIsAttachable(PROFILE.resume);
+
+  const row = document.getElementById("attachToggleRow");
+  const toggle = document.getElementById("btnAttachToggle");
+  row.style.display = tailored ? "" : "none";
+  toggle.textContent = onTailored ? "Attach my own resume instead" : "Attach AI resume instead";
 
   const wc = document.getElementById("whatChangedList");
   wc.innerHTML = "";
-  (r.what_changed || []).forEach(c => {
+  const changed = (onTailored && tailored.what_changed) || [];
+  changed.forEach(c => {
     const li = document.createElement("li");
     li.textContent = c;
     wc.appendChild(li);
   });
-  document.getElementById("whatChangedCard").style.display = (r.what_changed && r.what_changed.length) ? "block" : "none";
+  document.getElementById("whatChangedCard").style.display = changed.length ? "block" : "none";
 }
+
 
 // ---------------------------------------------------------------------------
 // Gmail drafts
@@ -785,13 +841,12 @@ function resumeFileName() {
 // Shared by the download button and the Gmail draft so the attachment is byte
 // for byte the file the user would have downloaded.
 async function buildResumeDocx() {
-  const jd = SESSION.jd, gen = SESSION.generation;
   const idToken = await getIdToken();
   const r = await fetch("/api/job-resume-docx", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      idToken, resume: gen.resume, contact: PROFILE.identity,
+      idToken, resume: activeResume(), contact: PROFILE.identity,
       fileName: resumeFileName()
     })
   });
@@ -843,10 +898,13 @@ document.getElementById("btnGmailDraft").addEventListener("click", async (e) => 
       toast("That's a different Google account — pick the one you signed in with");
     } else if (err?.message === "signed_out") {
       toast("Sign in again to save drafts");
-    } else if (err?.status === 403) {
-      toast("Gmail access wasn't granted — allow it when Google asks");
     } else {
-      toast("Couldn't save the draft to Gmail");
+      // Google says which failure this is in the response body. That string used
+      // to be captured and dropped on the floor, so every one of these became
+      // "allow it when Google asks" — advice that is wrong whenever the popup
+      // already worked. Log it and let gmailErrorMessage pick the real message.
+      console.error("Gmail draft failed:", err?.status, err?.detail || err);
+      toast(gmailErrorMessage(err));
     }
   } finally {
     btn.disabled = false;
@@ -880,6 +938,45 @@ document.getElementById("btnDownloadResume").addEventListener("click", async () 
     toast(e.userFacing ? e.message : "Couldn't build the resume file");
   }
 });
+
+// Tailoring is a second provider call, made only when asked for. It does not
+// touch the email or the fit verdict already on screen — those were settled by
+// the capture call and a user who wanted a resume didn't ask to have them redone.
+document.getElementById("btnTailorResume").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  if (!masterResumeIsAttachable(PROFILE.resume)) {
+    toast("Add your resume in Profile first — there's nothing to tailor from");
+    return;
+  }
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "Tailoring…";
+  try {
+    const out = await apiPost("/api/job-generate", {
+      jd: SESSION.jd, profile: PROFILE,
+      provider: SESSION.provider, model: SESSION.model,
+      want: "resume"
+    });
+    SESSION.generation = { ...(SESSION.generation || {}), resume: out.resume };
+    // Generating it is a clear signal of intent, so it becomes the attachment —
+    // the toggle is there for changing that mind, not for confirming it twice.
+    SESSION.attachSource = "tailored";
+    renderResumeCard();
+    toast("Tailored resume ready — it will be attached");
+  } catch (err) {
+    toast(err?.message || "Couldn't tailor the resume");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+});
+
+document.getElementById("btnAttachToggle").addEventListener("click", () => {
+  SESSION.attachSource = usingTailored() ? "master" : "tailored";
+  renderResumeCard();
+  toast(usingTailored() ? "Attaching the AI resume" : "Attaching your own resume");
+});
+
 document.getElementById("btnMarkSent").addEventListener("click", async () => {
   if (SESSION.logId) {
     try { await dbUpdate(SESSION.logId, { status: "sent" }); } catch (e) {}
@@ -903,7 +1000,8 @@ async function logCurrentApplication(status) {
     fitVerdict: gen.fit.verdict + (SESSION.mismatchOverridden ? " (overridden)" : ""),
     status,
     email: gen.email,
-    resume: gen.resume,
+    resume: activeResume(),
+    resumeSource: usingTailored() ? "tailored" : "master",
     provider: SESSION.provider,
     model: SESSION.model,
     followUps: []
