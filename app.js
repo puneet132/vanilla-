@@ -796,7 +796,16 @@ async function getGmailAccessToken() {
   // reauthenticateWithPopup rather than signInWithPopup: it pins the popup to the
   // account already signed in, so someone with three Google accounts can't
   // silently authorise the wrong mailbox and wonder where the draft went.
-  if (user.email) gmailProvider.setCustomParameters({ login_hint: user.email });
+  // prompt=consent is not optional here, and leaving it out is why this used to
+  // fail with a scope error nobody was ever asked to prevent. This account has
+  // already approved the app for sign-in, so Google skips the consent screen on
+  // a later request and hands back a token carrying only those original scopes —
+  // gmail.compose silently never granted, popup flashing past, and a 403 at the
+  // draft call. Forcing consent is the documented way to add a scope to an
+  // account that already trusts the app.
+  const params = { prompt: "consent" };
+  if (user.email) params.login_hint = user.email;
+  gmailProvider.setCustomParameters(params);
   const res = await reauthenticateWithPopup(user, gmailProvider);
   const token = GoogleAuthProvider.credentialFromResult(res)?.accessToken;
   if (!token) throw new Error("no_token");
