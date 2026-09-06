@@ -453,19 +453,40 @@ function handleFile(file) {
   SESSION.duplicateInfo = null;
   SESSION.logId = null;
 
+  // Every branch below has to end in either startExtraction() or a toast.
+  // accept="image/*" is only a hint — phones honour it loosely, and a HEIC or a
+  // truncated download passes the picker and then fails to decode. Without an
+  // onerror the app did nothing at all: no message, no screen change, the user
+  // left staring at the button they just pressed wondering if it registered.
+  const failed = (msg) => {
+    SESSION.imageB64 = null;
+    toast(msg);
+    showScreen("home");
+  };
+
   const reader = new FileReader();
+  reader.onerror = () => failed("Couldn't read that file — try picking it again.");
   reader.onload = () => {
     const img = new Image();
+    img.onerror = () => failed("That file isn't an image this browser can open — try a PNG or JPEG screenshot.");
     img.onload = () => {
-      const maxW = 1024;
-      const scale = Math.min(1, maxW / img.width);
-      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-      SESSION.imageB64 = dataUrl.split(",")[1];
-      startExtraction();
+      try {
+        const maxW = 1024;
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        if (!w || !h) return failed("That image has no dimensions this browser can read — try a PNG or JPEG screenshot.");
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        const b64 = dataUrl.split(",")[1];
+        if (!b64) return failed("Couldn't process that image — try a PNG or JPEG screenshot.");
+        SESSION.imageB64 = b64;
+        startExtraction();
+      } catch (e) {
+        // Canvas throws on images too large for the device to rasterise.
+        failed("That image is too large for this device to process — try a smaller screenshot.");
+      }
     };
     img.src = reader.result;
   };
@@ -595,7 +616,7 @@ document.getElementById("btnQuickContinue").addEventListener("click", async () =
 
 async function runGenerate() {
   setProcessing("Checking fit…");
-  const statuses = ["Checking fit…", "Tailoring the resume…", "Drafting the email…"];
+  const statuses = ["Checking fit…", "Reading the requirements…", "Drafting the email…"];
   let i = 0;
   const rotate = setInterval(() => { i = (i + 1) % statuses.length; document.getElementById("processingStatus").textContent = statuses[i]; }, 1800);
   try {
@@ -970,11 +991,16 @@ document.getElementById("btnTailorResume").addEventListener("click", async (e) =
   btn.disabled = true;
   btn.textContent = "Tailoring…";
   try {
-    const out = await apiPost("/api/job-generate", {
-      jd: SESSION.jd, profile: PROFILE,
-      provider: SESSION.provider, model: SESSION.model,
-      want: "resume"
-    });
+    const out = await withAutoRetry(
+      () => apiPost("/api/job-generate", {
+        jd: SESSION.jd, profile: PROFILE,
+        provider: SESSION.provider, model: SESSION.model,
+        want: "resume"
+      }),
+      // The button is the only status surface on this screen, so it carries the
+      // countdown rather than leaving "Tailoring…" sitting there for a minute.
+      (msg) => { btn.textContent = msg; }
+    );
     SESSION.generation = { ...(SESSION.generation || {}), resume: out.resume };
     // Generating it is a clear signal of intent, so it becomes the attachment —
     // the toggle is there for changing that mind, not for confirming it twice.
