@@ -539,6 +539,13 @@ async function startExtraction(roleHint) {
     }
 
     SESSION.jd = jd;
+    // A new posting is a new application, so the attachment choice starts over.
+    // usingTailored() already refuses to use a resume that isn't there, so this
+    // changes no behaviour today — it removes the possibility that a later edit
+    // to that guard silently attaches the previous job's tailored resume to this
+    // one. Sending the wrong resume to a recruiter is not a failure worth
+    // leaving one refactor away.
+    SESSION.attachSource = "master";
     await afterExtraction();
   } catch (err) {
     toast(err.message || "Something went wrong reading that image.");
@@ -856,7 +863,9 @@ async function buildResumeDocx() {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       idToken, resume: activeResume(), contact: PROFILE.identity,
-      fileName: resumeFileName()
+      fileName: resumeFileName(),
+      // Lets the server give advice that matches which resume came up empty.
+      source: usingTailored() ? "tailored" : "master"
     })
   });
   if (!r.ok) {

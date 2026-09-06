@@ -179,8 +179,15 @@ module.exports = async (req, res) => {
   // the user discovered was blank only after attaching it to an application.
   // An error they can act on beats a file they can't.
   if (!resumeIsSubstantive(resume)) {
+    // Two very different users hit this. One asked a model for a resume and got
+    // an empty one back — retrying or switching model is the fix. The other
+    // never filled in their profile, and telling them to "try a different
+    // model" sends them to a dropdown that cannot possibly help.
+    const fromMaster = req.body.source === "master";
     return res.status(422).json({
-      error: "The AI returned no resume content to put in the file. Try generating again, or pick a different model in the dropdown.",
+      error: fromMaster
+        ? "Your profile has no resume content to put in the file yet. Add your experience in Profile, or upload a .pdf/.docx resume there."
+        : "The AI returned no resume content to put in the file. Try generating again, or pick a different model in the dropdown.",
       code: "empty_resume"
     });
   }

@@ -6,3 +6,9 @@ test
 # local node_modules only makes the deploy slow (and can ship the wrong
 # platform's binaries).
 node_modules
+
+# Deploy-time artefacts, not web assets. firestore.rules is pasted into the
+# Firebase console, never fetched by the app — serving it just hands a reader
+# the collection names and data model for free. The rules are enforced by
+# Google either way, so this is reconnaissance surface, not a broken control.
+firestore.rules
