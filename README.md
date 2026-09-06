@@ -3,25 +3,31 @@
 Sign in with Google, screenshot a job posting, get a fit check, a JD-tailored ATS-safe
 resume, and a drafted email — reviewed before anything sends. Applications are tracked
 per account (company, role, date applied, resume, email, follow-ups) and sync across
-devices. Each user connects their own AI provider key (Anthropic / OpenAI / Gemini) —
+devices. Each user connects their own AI provider key (Anthropic / OpenAI / Gemini / OpenRouter) —
 nothing is billed to anyone but the account that added the key.
 
 ```
 index.html          screens markup
 style.css            all styling
 app.js                app logic: auth, capture flow, Firestore CRUD, providers, follow-ups
-firebase-init.js      Firebase client config (fill in after creating your project)
+firebase-init.js      Firebase client config + the separate Gmail-scope provider
+mime.mjs              builds the RFC-822 message the Gmail draft API expects
 firestore.rules       security rules — deploy these in the Firebase console
 manifest.json, sw.js, icons/   PWA install/offline shell
+test/                 node --test suites (npm test) — not deployed
 api/
   _firebaseAdmin.js     shared Admin SDK init + ID token verification
   _crypto.js              AES-256-GCM encrypt/decrypt for provider keys at rest
-  _llm.js                  normalizes Anthropic/OpenAI/Gemini structured-output calls
+  _llm.js                  normalizes Anthropic/OpenAI/Gemini/OpenRouter structured-output
+                             calls, plus model fallback and provider error classification
+  _resume.js               shared resume-shape helpers used by the docx builder
   save-provider-key.js    save/remove/status for a user's encrypted provider key
+  profile-resume-parse.js  uploaded .pdf/.docx → structured master-resume JSON
   job-extract.js          vision call → structured JD JSON
   job-generate.js         fit verdict + tailored resume + email draft
   job-followup.js         follow-up nudge email for an existing application
   job-resume-docx.js      deterministic ATS-safe .docx builder
+  delete-account.js       erases profile, applications, and encrypted keys
 ```
 
 ## Setup — do this once
@@ -79,18 +85,44 @@ push then redeploys automatically.
 - **A provider key only grants API usage**, billed to whoever added it — it is not the same as a ChatGPT Plus/Claude Pro/Gemini Advanced subscription and can't touch anything outside that provider's API.
 - Error responses returned to the browser are generic; the actual upstream error detail is only logged server-side (Vercel function logs), so provider error bodies never round-trip to the client.
 
-## What's deferred (by original spec)
+## Handing off the finished application
 
-**Gmail OAuth draft creation.** Ships with `mailto:` + `.docx` download instead —
-nothing auto-sends, ever. Real Gmail API draft creation is a clean follow-up once this
-is proven out.
+Two routes, both ending in something you send yourself — nothing auto-sends, ever.
+
+- **Save to Gmail drafts.** Creates a real Gmail draft with the tailored resume attached.
+  Asks for Google's `gmail.compose` scope the first time you use it — deliberately a
+  second, separate consent prompt rather than an extra scope bolted onto sign-in, so
+  signing in never implies mailbox access. That scope can create and update drafts; it
+  cannot send mail and cannot read existing mail. The access token lives in memory for
+  the session only and is dropped on sign-out.
+- **Download + mailto.** Downloads the `.docx` and opens the draft in whatever mail
+  client the OS has. No attachment — you attach the downloaded file yourself.
+
+## Testing
+
+```bash
+npm test    # node --test, no watch mode, no external services needed
+```
+
+Covers the encryption envelope, provider error classification and fallback, the Gemini
+request shape, MIME assembly for Gmail drafts, resume completion, and that the generated
+`.docx` is a real formatted document containing the actual work history.
 
 ## Editing the profile
 
 Identity and standing answers have their own fields. The master resume (experience,
-education, achievements, skills, projects) is edited as JSON — it's the ground truth
-every tailored resume and email is generated fresh from. "Reset to default" restores
-the seed data.
+education, achievements, skills, projects) is the ground truth every tailored resume and
+email is generated fresh from. Two ways to populate it:
+
+- **Upload a `.pdf` or `.docx` resume.** Text is extracted server-side, then a model maps
+  it into the structured shape under a strict extract-only-what-is-present rule — it never
+  invents experience you didn't write.
+- **Edit the JSON directly**, for corrections and fine-tuning.
+
+"Reset to default" restores the seed data.
+
+New accounts are walked through provider setup and profile entry by an onboarding flow,
+rather than being dropped into a fit check they can't run yet.
 
 ## Model registry
 

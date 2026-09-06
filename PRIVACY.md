@@ -1,21 +1,21 @@
 # Privacy Policy — Vanilla
 
-> **DRAFT — NOT YET REVIEWED.** This was written by reading the application
-> source and describing exactly what it does today. It is accurate to the code,
-> but it is not legal advice and has not been reviewed by a lawyer. Before
-> publishing this, or listing the app anywhere, fill in every `[…]` placeholder
-> and have someone qualified review it — particularly the sections on
-> third-party recipients and recruiter data.
+> This policy was written by reading the application source and describing
+> exactly what it does today. It is accurate to the code. It is **not legal
+> advice and has not been reviewed by a lawyer** — if this app is ever listed
+> publicly or offered beyond personal use, have someone qualified review it,
+> particularly the sections on third-party recipients and recruiter data.
 
-**Last updated:** [DATE]
-**Contact:** [YOUR CONTACT EMAIL]
-**Data fiduciary / controller:** [YOUR NAME OR ENTITY]
+**Last updated:** 6 September 2026
+**Contact:** puneetgupta132@gmail.com
+**Data fiduciary / controller:** Puneet Gupta
 
 ## What this app is
 
 Vanilla lets you photograph or upload a screenshot of a job posting. It reads
 the posting, checks it against your saved profile, and drafts a tailored resume
-and an application email for you to review and send yourself. The app never
+and an application email for you to review and send yourself. If you ask it to,
+it can save that email as a **draft** in your own Gmail account. The app never
 sends an email on your behalf.
 
 ## What we collect
@@ -39,10 +39,25 @@ text, any follow-up drafts, and which AI provider and model produced them.
 Stored encrypted (AES-256-GCM) on the server. It is never returned to your
 browser after saving — you only ever see a masked preview.
 
-**Screenshots**
-Held in memory for the duration of the request and sent to the AI provider you
-selected. They are not written to our database and not retained after the
-request completes.
+**Screenshots and uploaded resume files**
+A job-posting screenshot, or a `.pdf`/`.docx` resume you upload to populate your
+profile, is held in memory for the duration of that request and sent to the AI
+provider you selected. Neither is written to our database, and neither is
+retained after the request completes. Only the extracted text result is saved.
+
+## Gmail access — only if you ask for it
+
+Saving a draft to Gmail requires a separate Google permission prompt, shown the
+first time you press **Save to Gmail drafts** — never at sign-up. The permission
+requested is `gmail.compose`, the narrowest scope for the job: it can create and
+update drafts, and it **cannot send mail and cannot read your existing mail**.
+
+When you use it, the drafted email and the attached resume are transmitted to
+Google's Gmail API and stored as a draft in your own mailbox, where they are
+governed by your own Google account's terms. The access token is held in memory
+for that browser session only, is never written to storage, and is discarded
+when you sign out. You can revoke this permission at any time in your Google
+account settings, and doing so does not affect the rest of the app.
 
 ## About recruiter email addresses
 
@@ -58,7 +73,11 @@ or that application record.
 |---|---|---|
 | Google (Firebase) | Authentication details and all stored profile and application data | Sign-in and database hosting |
 | Vercel | Requests to the app, standard server logs | Hosting |
-| The AI provider **you** choose (Anthropic, OpenAI, or Google) | The screenshot and the profile content needed to draft your application | Generating the fit check, resume, and email |
+| The AI provider **you** choose (Anthropic, OpenAI, Google, or OpenRouter) | The screenshot or uploaded resume, and the profile content needed to draft your application | Generating the fit check, resume, and email |
+| Google (Gmail API) | The drafted email and attached resume — **only** if you use "Save to Gmail drafts" | Creating a draft in your own mailbox |
+
+If you select OpenRouter, it routes your request onward to the underlying model
+provider it selects, under its own terms.
 
 The AI provider is billed to **your own** API key. Each provider handles data
 under its own terms, which you accept when you create that key. We do not sell
@@ -70,14 +89,17 @@ Until you delete it. Applications can be deleted individually from the log.
 Deleting your account (Profile → Delete account) permanently removes your
 profile, every application and follow-up, and your encrypted provider keys.
 
+Drafts already saved into your Gmail are in **your** mailbox, not ours — deleting
+your Vanilla account does not remove them. Delete those from Gmail yourself.
+
 ## Your rights
 
 - **Access** — everything held about you is visible in the app: your profile and your application log.
 - **Correction** — edit your profile at any time.
 - **Deletion** — Profile → *Delete my account and all my data*. This is immediate and cannot be undone.
-- **Withdrawing consent** — remove your provider key, or delete your account.
+- **Withdrawing consent** — remove your provider key, revoke Gmail access in your Google account, or delete your account.
 
-For anything not covered by the in-app controls, contact [YOUR CONTACT EMAIL].
+For anything not covered by the in-app controls, contact puneetgupta132@gmail.com.
 
 ## Security
 
@@ -100,10 +122,8 @@ a new "last updated" date.
 
 ---
 
-### Open items before publishing
+### Still outstanding
 
-- [ ] Fill in controller name, contact email, and date
-- [ ] Legal review — especially recruiter (third-party) data handling
-- [ ] Decide the governing jurisdiction and name it
-- [ ] Publish at a stable public URL and link it from the sign-in screen
+- [ ] Legal review — especially recruiter (third-party) data handling and the Gmail scope
 - [ ] Confirm whether Vercel/Firebase server logs retain personal data, and for how long
+- [ ] If the app is ever opened beyond personal use: link this from the sign-in screen and confirm Google's API Services User Data Policy obligations for the `gmail.compose` scope
