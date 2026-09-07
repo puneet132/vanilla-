@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/*.js": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -19,6 +22,9 @@
     { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/app.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/mime.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/master-resume.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/gmail-error.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/http-error.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/firebase-init.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/style.css", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
   ]

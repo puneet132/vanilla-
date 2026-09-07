@@ -2,6 +2,7 @@ import { auth, db, googleProvider, gmailProvider, signInWithPopup, reauthenticat
 import { buildMimeMessage, toGmailRaw } from "./mime.mjs";
 import { masterResumeToDocxShape, masterResumeIsAttachable } from "./master-resume.mjs";
 import { gmailErrorMessage } from "./gmail-error.mjs";
+import { apiErrorMessage } from "./http-error.mjs";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -169,8 +170,13 @@ async function apiPost(path, body) {
   const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, idToken }) });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const err = new Error((data.error || "request failed") + (data.detail ? ` (${data.detail})` : ""));
+    // A non-OK response with no error field never came from this app — every
+    // handler returns { error }. It came from the platform: a function past its
+    // time limit, a body over the size cap, a crash before any reply. That used
+    // to read "request failed", which names no cause and cannot be reported.
+    const err = new Error(apiErrorMessage(r.status, data));
     err.code = data.code;
+    err.status = r.status;
     throw err;
   }
   return data;
