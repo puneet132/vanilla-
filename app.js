@@ -68,9 +68,8 @@ const MODEL_REGISTRY = {
   // Free-tier fallback chain, least-contended first. Keep in sync with
   // api/_llm.js — the server walks this same order when a model is busy.
   gemini: [
-    { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (most reliable free)" },
+    { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite (most reliable free)" },
     { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
     { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
   ],
   openrouter: [

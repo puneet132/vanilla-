@@ -122,4 +122,28 @@ describe("Gemini model defaults", () => {
     const first = MODEL_REGISTRY.gemini[0].id;
     assert.ok(/flash/i.test(first), `first Gemini model should be a Flash variant, got "${first}"`);
   });
+
+  // Models Google has actually retired. Keeping one in the list costs a wasted
+  // round-trip on every request that reaches it — and as the FIRST entry it
+  // taxes every request in the app, which is how it went unnoticed: fallback
+  // hid the failure while the latency it added pushed the serverless function
+  // towards its time limit.
+  const RETIRED = [
+    // 404 on 8 Sep 2026: "no longer available to new users. Please update your
+    // code to use models/gemini-3.5-flash-lite".
+    "gemini-2.5-flash-lite"
+  ];
+
+  for (const dead of RETIRED) {
+    test(`does not ship the retired model ${dead}`, () => {
+      const ids = MODEL_REGISTRY.gemini.map(m => m.id);
+      assert.ok(!ids.includes(dead), `${dead} was retired by Google and 404s — remove it from the registry`);
+    });
+  }
+
+  test("gemini-flash-latest stays out of the registry — it is the most contended alias", () => {
+    const ids = MODEL_REGISTRY.gemini.map(m => m.id);
+    assert.ok(!ids.includes("gemini-flash-latest"),
+      "the -latest alias always resolves to the newest, busiest model and returned 503 repeatedly");
+  });
 });

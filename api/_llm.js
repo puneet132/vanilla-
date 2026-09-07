@@ -23,10 +23,16 @@ const MODEL_REGISTRY = {
   // in-demand thing on the platform — it returned 503 UNAVAILABLE ("this model
   // is currently experiencing high demand") over and over. Pinned older models
   // are mature, far less contended, and entirely good enough for this task.
+  // gemini-2.5-flash-lite was removed on 8 Sep 2026: Google retired it and now
+  // answers it with 404 "no longer available to new users. Please update your
+  // code to use models/gemini-3.5-flash-lite". Nothing broke, because
+  // callProviderWithFallback advances on model_unavailable — but it was the
+  // FIRST entry, so every single request paid a wasted round-trip to a dead
+  // model before doing any real work, and that latency pushes the serverless
+  // function towards its time limit. A dead default is not a free default.
   gemini: [
-    { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (most reliable free)" },
+    { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite (most reliable free)" },
     { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
     { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
   ],
   // OpenRouter exists so one provider's capacity problem cannot take the whole

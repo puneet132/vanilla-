@@ -12,6 +12,12 @@ const assert = require("node:assert");
 
 const { callProviderWithFallback, MODEL_REGISTRY } = require("../api/_llm");
 
+// Model ids come from the registry, never written out literally. These tests are
+// about the walk, not about today's model line-up: when Google retired
+// gemini-2.5-flash-lite on 8 Sep 2026, hardcoded ids failed four of these for a
+// reason that had nothing to do with the behaviour under test.
+const GEM = MODEL_REGISTRY.gemini.map(m => m.id);
+
 const TOOL = { name: "t", description: "d", schema: { type: "object", properties: { ok: { type: "boolean" } } } };
 const realFetch = global.fetch;
 
@@ -45,52 +51,52 @@ describe("callProviderWithFallback", () => {
 
   test("returns the first model's result when it works, with no fallback flag", async () => {
     const calls = scriptGemini(["ok"]);
-    const out = await run("gemini-2.5-flash-lite");
+    const out = await run(GEM[0]);
     assert.deepStrictEqual(out.result, { ok: true });
-    assert.strictEqual(out.model, "gemini-2.5-flash-lite");
+    assert.strictEqual(out.model, GEM[0]);
     assert.strictEqual(out.fellBackFrom, null);
     assert.strictEqual(calls.length, 1, "must not call extra models unnecessarily");
   });
 
   test("walks to the next model when the first is busy", async () => {
     const calls = scriptGemini([busy, "ok"]);
-    const out = await run("gemini-2.5-flash-lite");
+    const out = await run(GEM[0]);
     assert.deepStrictEqual(out.result, { ok: true });
-    assert.strictEqual(out.model, "gemini-2.5-flash");
-    assert.strictEqual(out.fellBackFrom, "gemini-2.5-flash-lite", "client needs to know it switched");
-    assert.deepStrictEqual(calls, ["gemini-2.5-flash-lite", "gemini-2.5-flash"]);
+    assert.strictEqual(out.model, GEM[1]);
+    assert.strictEqual(out.fellBackFrom, GEM[0], "client needs to know it switched");
+    assert.deepStrictEqual(calls, [GEM[0], GEM[1]]);
   });
 
   test("keeps walking through several busy models", async () => {
     const calls = scriptGemini([busy, busy, "ok"]);
-    const out = await run("gemini-2.5-flash-lite");
-    assert.strictEqual(out.model, "gemini-3.5-flash-lite");
+    const out = await run(GEM[0]);
+    assert.strictEqual(out.model, GEM[2]);
     assert.strictEqual(calls.length, 3);
   });
 
   test("gives up once the whole chain is busy, surfacing the last error", async () => {
     const calls = scriptGemini([busy, busy, busy, busy]);
-    await assert.rejects(() => run("gemini-2.5-flash-lite"), /503/);
+    await assert.rejects(() => run(GEM[0]), /503/);
     assert.strictEqual(calls.length, MODEL_REGISTRY.gemini.length, "should try every remaining model exactly once");
   });
 
   test("does NOT fall back on an invalid key — that fails identically everywhere", async () => {
     const calls = scriptGemini([badKey, "ok"]);
-    await assert.rejects(() => run("gemini-2.5-flash-lite"));
+    await assert.rejects(() => run(GEM[0]));
     assert.strictEqual(calls.length, 1, "must stop immediately on an account-level failure");
   });
 
   test("does NOT fall back on exhausted quota — retrying would burn the daily allowance", async () => {
     const calls = scriptGemini([noQuota, "ok"]);
-    await assert.rejects(() => run("gemini-2.5-flash-lite"));
+    await assert.rejects(() => run(GEM[0]));
     assert.strictEqual(calls.length, 1);
   });
 
   test("starts from the user's chosen model, not the top of the chain", async () => {
     const calls = scriptGemini([busy, "ok"]);
-    const out = await run("gemini-3.5-flash-lite");
-    assert.deepStrictEqual(calls, ["gemini-3.5-flash-lite", "gemini-2.5-pro"]);
-    assert.strictEqual(out.model, "gemini-2.5-pro");
+    const out = await run(GEM[1]);
+    assert.deepStrictEqual(calls, [GEM[1], GEM[2]], "must not restart at the top of the chain");
+    assert.strictEqual(out.model, GEM[2]);
   });
 
   test("still works for a model not present in the registry", async () => {
