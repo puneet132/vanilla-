@@ -114,7 +114,11 @@ Email tone: concise, human, on-point — not stiff, not templated-sounding. One 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  const { idToken, jd, profile, provider, model } = req.body || {};
+  const { idToken, jd, profile, provider, model, want } = req.body || {};
+  // Anything that isn't an explicit resume request is an apply request, so an
+  // old cached client asking for the previous behaviour still gets a usable
+  // fit + email rather than a 400.
+  const mode = want === "resume" ? "resume" : "apply";
   let uid;
   try {
     uid = (await verifyIdToken(idToken)).uid;
