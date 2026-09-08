@@ -959,25 +959,58 @@ document.getElementById("btnGmailDraft").addEventListener("click", async (e) => 
 document.getElementById("btnCopyEmail").addEventListener("click", () => {
   navigator.clipboard.writeText(document.getElementById("emailBody").value).then(() => toast("Copied"));
 });
-document.getElementById("btnMailto").addEventListener("click", () => {
+// Builds the .docx and hands it to the browser. Throws if it can't be built, so
+// callers can say what actually happened rather than claiming a file appeared.
+async function saveResumeFile() {
+  const { blob, filename } = await buildResumeDocx();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoking synchronously after click() can abort the download before the
+  // browser has finished reading the blob. One tick is enough to be safe.
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return filename;
+}
+
+document.getElementById("btnMailto").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
   const to = document.getElementById("emailTo").value;
   const subject = document.getElementById("emailSubject").value;
   const body = document.getElementById("emailBody").value;
   const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  toast("Resume downloads separately — attach it in your mail app");
+
+  // This used to promise "Resume downloads separately" and then download
+  // nothing at all — mailto: cannot carry an attachment, so the file has to be
+  // fetched here, and it never was. The message was the only part that worked.
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "Preparing resume…";
+  let saved = null;
+  try {
+    saved = await saveResumeFile();
+  } catch (err) {
+    saved = null;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+
+  toast(saved
+    ? `${saved} downloaded — attach it in your mail app`
+    : "Opening the draft — the resume didn't build, add one from Profile");
+
+  // After the download, not before: this hands off to the OS mail handler.
   window.location.href = mailto;
 });
+
 document.getElementById("btnDownloadResume").addEventListener("click", async () => {
   try {
-    const { blob, filename } = await buildResumeDocx();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    const filename = await saveResumeFile();
+    toast(`${filename} downloaded`);
   } catch (e) {
     toast(e.userFacing ? e.message : "Couldn't build the resume file");
   }
