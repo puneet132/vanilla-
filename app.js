@@ -839,7 +839,19 @@ async function getGmailAccessToken() {
   const params = { prompt: "consent" };
   if (user.email) params.login_hint = user.email;
   gmailProvider.setCustomParameters(params);
-  const res = await reauthenticateWithPopup(user, gmailProvider);
+
+  // A popup that is never resolved leaves the button reading "Saving to Gmail…"
+  // for the rest of the session with no way back. That is reachable in normal
+  // use: the consent screen shows an unverified-app warning, and a popup that is
+  // blocked, backgrounded, or dismissed in a way Firebase doesn't observe never
+  // settles the promise. Three minutes is long enough to read that warning and
+  // still short enough that the UI comes back on its own.
+  const res = await Promise.race([
+    reauthenticateWithPopup(user, gmailProvider),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(Object.assign(new Error("popup_timeout"), { code: "popup_timeout" })), 180000)
+    )
+  ]);
   const token = GoogleAuthProvider.credentialFromResult(res)?.accessToken;
   if (!token) throw new Error("no_token");
 
@@ -936,7 +948,11 @@ document.getElementById("btnGmailDraft").addEventListener("click", async (e) => 
     await createGmailDraft({ to, subject, body, attachment });
     toast(attachment ? "Draft saved to Gmail with your resume attached" : "Draft saved to Gmail — resume didn't attach, add it manually");
   } catch (err) {
-    if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
+    if (err?.code === "popup_timeout") {
+      toast("The Google permission window didn't finish. Close it and try again — or use \"Open in Mail App\".");
+    } else if (err?.code === "auth/popup-blocked") {
+      toast("Your browser blocked the Google permission window — allow popups for this site and try again.");
+    } else if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
       toast("Gmail access cancelled");
     } else if (err?.code === "auth/user-mismatch") {
       toast("That's a different Google account — pick the one you signed in with");
