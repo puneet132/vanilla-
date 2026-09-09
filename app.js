@@ -698,6 +698,28 @@ function renderReview() {
   document.getElementById("emailBody").value = gen.email.body || "";
 
   renderResumeCard();
+  renderGmailFirstRunNote();
+}
+
+// Google shows an "unverified app" warning the first time gmail.compose is
+// requested, and it is the single most likely place for someone to stop: a red
+// triangle, the word "unsafe", and a BACK TO SAFETY button that is much larger
+// than the way forward. Saying what the screen is, and which words to click,
+// before it appears turns a dead end into a step. It disappears for good once a
+// draft has actually been created, because after that the warning is gone too.
+const GMAIL_OK_KEY = "jobagent.gmailConsented.v1";
+
+function renderGmailFirstRunNote() {
+  const note = document.getElementById("gmailFirstRunNote");
+  if (!note) return;
+  let done = false;
+  try { done = Boolean(localStorage.getItem(GMAIL_OK_KEY)); } catch (e) { done = false; }
+  note.style.display = done ? "none" : "block";
+}
+
+function markGmailConsented() {
+  try { localStorage.setItem(GMAIL_OK_KEY, "1"); } catch (e) {}
+  renderGmailFirstRunNote();
 }
 
 // ---------------------------------------------------------------------------
@@ -946,6 +968,7 @@ document.getElementById("btnGmailDraft").addEventListener("click", async (e) => 
     }
 
     await createGmailDraft({ to, subject, body, attachment });
+    markGmailConsented();
     toast(attachment ? "Draft saved to Gmail with your resume attached" : "Draft saved to Gmail — resume didn't attach, add it manually");
   } catch (err) {
     if (err?.code === "popup_timeout") {
