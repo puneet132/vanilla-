@@ -1015,6 +1015,48 @@ async function saveResumeFile() {
   return filename;
 }
 
+// Gmail's web compose URL, which needs no OAuth at all.
+//
+// The API route can attach the resume for you, but it costs a Google consent
+// screen that warns the app is unverified — a wall that stops people who did
+// nothing wrong. This route opens a Gmail compose tab already filled in, and
+// downloads the resume alongside it to attach by hand. One extra action, zero
+// permissions, and it lands in Gmail rather than whatever desktop mail client
+// the OS happens to have registered for mailto:.
+document.getElementById("btnGmailCompose").addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  const to = document.getElementById("emailTo").value;
+  const subject = document.getElementById("emailSubject").value;
+  const body = document.getElementById("emailBody").value;
+
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "Preparing resume…";
+  let saved = null;
+  try {
+    saved = await saveResumeFile();
+  } catch (err) {
+    saved = null;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+
+  const url = "https://mail.google.com/mail/?view=cm&fs=1"
+    + `&to=${encodeURIComponent(to)}`
+    + `&su=${encodeURIComponent(subject)}`
+    + `&body=${encodeURIComponent(body)}`;
+
+  // Opened after the download so the new tab can't interrupt it. If the popup
+  // blocker eats it, fall back to navigating this tab rather than doing nothing.
+  const win = window.open(url, "_blank", "noopener");
+  if (!win) window.location.href = url;
+
+  toast(saved
+    ? `Gmail opened — attach ${saved} from your downloads`
+    : "Gmail opened — add your resume in Profile to attach one");
+});
+
 document.getElementById("btnMailto").addEventListener("click", async (e) => {
   const btn = e.currentTarget;
   const to = document.getElementById("emailTo").value;
