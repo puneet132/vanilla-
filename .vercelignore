@@ -12,3 +12,8 @@ node_modules
 # the collection names and data model for free. The rules are enforced by
 # Google either way, so this is reconnaissance surface, not a broken control.
 firestore.rules
+
+# Notes and tooling for development — not part of the site.
+CLAUDE.md
+docs
+scripts

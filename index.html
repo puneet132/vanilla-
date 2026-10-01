@@ -15,6 +15,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<!-- Lets visual effects write `import * as THREE from "three"` against the vendored copy
+     (see scripts/vendor-three.mjs). Inline, so its hash is allow-listed in vercel.json's
+     CSP — editing even whitespace here means updating that hash (test/importmap.test.js). -->
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
 </head>
 <body>
 <div id="app">
