@@ -69,13 +69,13 @@ const MODEL_REGISTRY = {
   // api/_llm.js — the server walks this same order when a model is busy.
   gemini: [
     { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite (most reliable free)" },
-    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
+    { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
+    { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite" }
   ],
   openrouter: [
     { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B (free)" },
     { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (free)" },
-    { id: "nvidia/nemotron-nano-12b-v2-vl:free", label: "Nemotron Nano 12B VL (free)" }
+    { id: "nvidia/nemotron-3.5-super-vl:free", label: "Nemotron 3.5 Super VL (free)" }
   ]
 };
 
@@ -309,7 +309,7 @@ async function maybeOfferImport() {
     const n = legacy.length;
     if (confirm(`Found ${n} previously-saved application${n > 1 ? "s" : ""} on this device. Import them into your account?`)) {
       for (const rec of legacy) {
-        const id = rec.id || (Date.now() + "-" + Math.random().toString(36).slice(2, 8));
+        const id = rec.id != null ? String(rec.id) : (Date.now() + "-" + Math.random().toString(36).slice(2, 8));
         await dbAdd({ ...rec, id });
       }
       toast(`Imported ${n} application${n > 1 ? "s" : ""}`);
@@ -952,6 +952,11 @@ document.getElementById("btnGmailDraft").addEventListener("click", async (e) => 
   btn.disabled = true;
   btn.textContent = "Saving to Gmail…";
   try {
+    // Ask for Gmail access FIRST, while this click still counts as a user
+    // gesture. Building the .docx is a server round-trip; doing it before the
+    // permission popup let the gesture expire and the browser block the popup.
+    await getGmailAccessToken();
+
     // The resume is best-effort: a draft with the right words in it still beats
     // no draft, so a failed .docx build downgrades to a body-only draft rather
     // than losing the whole thing.
@@ -1049,8 +1054,11 @@ document.getElementById("btnGmailCompose").addEventListener("click", async (e) =
 
   // Opened after the download so the new tab can't interrupt it. If the popup
   // blocker eats it, fall back to navigating this tab rather than doing nothing.
-  const win = window.open(url, "_blank", "noopener");
-  if (!win) window.location.href = url;
+  // No "noopener" feature string: with it, window.open always returns null, so
+  // the fallback below fired every time and navigated this tab away as well.
+  const win = window.open(url, "_blank");
+  if (win) win.opener = null;
+  else window.location.href = url;
 
   toast(saved
     ? `Gmail opened — attach ${saved} from your downloads`
@@ -1125,6 +1133,7 @@ document.getElementById("btnTailorResume").addEventListener("click", async (e) =
     // the toggle is there for changing that mind, not for confirming it twice.
     SESSION.attachSource = "tailored";
     renderResumeCard();
+    syncLoggedResume();
     toast("Tailored resume ready — it will be attached");
   } catch (err) {
     toast(err?.message || "Couldn't tailor the resume");
@@ -1137,6 +1146,7 @@ document.getElementById("btnTailorResume").addEventListener("click", async (e) =
 document.getElementById("btnAttachToggle").addEventListener("click", () => {
   SESSION.attachSource = usingTailored() ? "master" : "tailored";
   renderResumeCard();
+  syncLoggedResume();
   toast(usingTailored() ? "Attaching the AI resume" : "Attaching your own resume");
 });
 
@@ -1147,6 +1157,16 @@ document.getElementById("btnMarkSent").addEventListener("click", async () => {
   toast("Marked as sent");
   showScreen("home");
 });
+
+// The application is logged before the user decides on tailoring, so the
+// record has to follow that choice or the log keeps the wrong resume forever.
+function syncLoggedResume() {
+  if (!SESSION.logId) return;
+  dbUpdate(SESSION.logId, {
+    resume: activeResume(),
+    resumeSource: usingTailored() ? "tailored" : "master"
+  }).catch(() => {});
+}
 
 async function logCurrentApplication(status) {
   const jd = SESSION.jd, gen = SESSION.generation;
@@ -1182,7 +1202,9 @@ async function renderLog() {
   items.forEach(item => {
     const div = document.createElement("div");
     div.className = "log-item";
-    const badgeClass = item.fitVerdict.startsWith("strong") ? "badge-strong" : item.fitVerdict.startsWith("partial") ? "badge-partial" : "badge-mismatch";
+    // Records imported from the old on-device store can lack a verdict.
+    const verdict = String(item.fitVerdict || "");
+    const badgeClass = verdict.startsWith("strong") ? "badge-strong" : verdict.startsWith("partial") ? "badge-partial" : "badge-mismatch";
     div.innerHTML = `
       <div><div class="lname">${escapeHtml(item.company)}</div><div class="lrole">${escapeHtml(item.role)}</div></div>
       <div class="lmeta"><span class="badge ${badgeClass}">${escapeHtml(item.fitVerdict)}</span><br><span class="badge badge-status" style="margin-top:4px;">${escapeHtml(item.status)}</span><br>${escapeHtml(item.date)}</div>`;
