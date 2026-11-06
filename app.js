@@ -3,6 +3,7 @@ import { buildMimeMessage, toGmailRaw } from "./mime.mjs";
 import { masterResumeToDocxShape, masterResumeIsAttachable } from "./master-resume.mjs";
 import { gmailErrorMessage } from "./gmail-error.mjs";
 import { apiErrorMessage } from "./http-error.mjs";
+import { formatEmailBody } from "./email-format.mjs";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -643,6 +644,9 @@ async function runGenerate() {
       (msg) => { clearInterval(rotate); document.getElementById("processingStatus").textContent = msg; }
     );
     clearInterval(rotate);
+    // Models often flatten the email into one line; restore its paragraphs
+    // before it reaches the editor, the log, or a Gmail draft.
+    if (gen && gen.email) gen.email.body = formatEmailBody(gen.email.body);
     SESSION.generation = gen;
     SESSION.mismatchOverridden = false;
 
@@ -1320,7 +1324,7 @@ async function draftFollowup(appId) {
       }),
       (msg) => toast(msg)
     );
-    const followUp = { id: Date.now() + "-" + Math.random().toString(36).slice(2, 6), date: new Date().toISOString().slice(0, 10), subject: result.subject, body: result.body, status: "drafted" };
+    const followUp = { id: Date.now() + "-" + Math.random().toString(36).slice(2, 6), date: new Date().toISOString().slice(0, 10), subject: result.subject, body: formatEmailBody(result.body), status: "drafted" };
     const followUps = [...(item.followUps || []), followUp];
     await dbUpdate(appId, { followUps });
     toast("Follow-up drafted");

@@ -64,7 +64,10 @@ const RESUME_SCHEMA = {
 
 const EMAIL_SCHEMA = {
   type: "object",
-  properties: { subject: { type: "string" }, body: { type: "string" } },
+  properties: {
+    subject: { type: "string" },
+    body: { type: "string", description: "Plain-text email body. Use \\n line breaks: greeting, blank line, paragraphs separated by blank lines, one bullet per line starting with '- ', sign-off and name on separate lines." }
+  },
   required: ["subject", "body"]
 };
 
@@ -109,7 +112,7 @@ Fit assessment must be a thoughtful judgment call, not a rubber stamp:
 
 When verdict is "mismatch", still write the email as best you can (the client decides whether to show it if the user overrides) but make fit.reason concrete and specific.
 
-Email tone: concise, human, on-point — not stiff, not templated-sounding. One line on what role/company and current position framing, then 3-5 bullets each mapped to a specific JD requirement with real metrics from the profile, then an optional one-line honest gap acknowledgment if fit is partial, then any explicitly-requested fields (CTC/notice period/etc.) if the JD asked and answers were provided, then a closing line mentioning the attached resume. Sign off with the name from the profile's identity field. Subject line: "Application for [Role] – [Location]" unless the JD specifies its own format — honor that format exactly when given.`;
+Email tone: concise, human, on-point — not stiff, not templated-sounding. One line on what role/company and current position framing, then 3-5 bullets each mapped to a specific JD requirement with real metrics from the profile, then an optional one-line honest gap acknowledgment if fit is partial, then any explicitly-requested fields (CTC/notice period/etc.) if the JD asked and answers were provided, then a closing line mentioning the attached resume. Sign off with the name from the profile's identity field. Subject line: "Application for [Role] – [Location]" unless the JD specifies its own format — honor that format exactly when given.\n\nLayout: Use real line breaks (\\n) in the body: greeting line, blank line, opening paragraph, blank line, one bullet per line starting with "- ", blank line, closing paragraph(s), blank line, sign-off on its own line, name on the next line. Plain text only — no markdown, no HTML.`;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });

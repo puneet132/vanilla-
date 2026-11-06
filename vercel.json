@@ -25,6 +25,7 @@
     { "source": "/master-resume.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/gmail-error.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/http-error.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/email-format.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/firebase-init.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/style.css", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/theme.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },

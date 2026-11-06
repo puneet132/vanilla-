@@ -21,7 +21,7 @@ const FOLLOWUP_TOOL = {
     type: "object",
     properties: {
       subject: { type: "string" },
-      body: { type: "string" }
+      body: { type: "string", description: "Plain-text body. Use \\n line breaks: greeting line, blank line, the message, blank line, sign-off and name on separate lines." }
     },
     required: ["subject", "body"]
   }
