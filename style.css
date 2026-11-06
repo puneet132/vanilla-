@@ -297,7 +297,7 @@ ul.changed li::marker{color:var(--accent);}
 .toggle-row button{flex:1; padding:9px; border-radius:999px; border:none; background:transparent; color:var(--ink-soft); font-size:14px; font-weight:600; cursor:pointer; transition:background-color .15s, color .15s, box-shadow .15s;}
 .toggle-row button.on{background:var(--card); color:var(--ink); box-shadow:var(--shadow-sm), 0 0 0 1px var(--line);}
 
-.toast{position:fixed; bottom:calc(24px + env(safe-area-inset-bottom)); left:50%; transform:translate(-50%, 8px); max-width:calc(100vw - 32px); background:var(--ink); color:var(--paper); padding:12px 20px; border-radius:999px; font-size:14px; font-weight:500; z-index:60; opacity:0; pointer-events:none; transition:opacity .2s, transform .3s var(--ease); box-shadow:var(--shadow-lg);}
+.toast{position:fixed; bottom:calc(24px + env(safe-area-inset-bottom)); left:50%; transform:translate(-50%, 8px); max-width:calc(100vw - 32px); background:var(--ink); color:var(--paper); padding:12px 20px; border-radius:16px; text-align:center; line-height:1.45; font-size:14px; font-weight:500; z-index:60; opacity:0; pointer-events:none; transition:opacity .2s, transform .3s var(--ease); box-shadow:var(--shadow-lg);}
 .toast.show{opacity:1; transform:translate(-50%, 0);}
 body.authed .toast{bottom:calc(100px + env(safe-area-inset-bottom));}
 

@@ -106,7 +106,9 @@ function toast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg;
   t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2400);
+  // Longer messages (e.g. sign-in errors) stay up long enough to read.
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => t.classList.remove("show"), Math.max(2400, msg.length * 60));
 }
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -122,7 +124,18 @@ document.getElementById("btnGoogleSignIn").addEventListener("click", async () =>
   try {
     await signInWithPopup(auth, googleProvider);
   } catch (e) {
-    toast("Sign-in failed — try again");
+    // Say which failure it is: a generic "try again" hides the one people can
+    // actually fix (a domain missing from Firebase Auth's authorized list).
+    const code = (e && e.code) || "";
+    console.error("Sign-in failed:", code, e);
+    const msg = {
+      "auth/unauthorized-domain": `Sign-in isn't enabled for ${location.hostname} yet (auth/unauthorized-domain)`,
+      "auth/popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again",
+      "auth/popup-closed-by-user": "Sign-in window was closed before finishing",
+      "auth/cancelled-popup-request": "Sign-in window was closed before finishing",
+      "auth/network-request-failed": "Network problem. Check your connection and try again"
+    }[code];
+    toast(msg || `Sign-in failed${code ? ` (${code})` : ""}. Try again`);
   }
 });
 document.getElementById("btnSignOut").addEventListener("click", async () => {
