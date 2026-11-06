@@ -60,6 +60,7 @@
     <!-- ===================== LANDING (signed-out) ===================== -->
     <section id="screen-login" class="screen active">
       <div class="lp">
+        <div class="scroll-progress" aria-hidden="true"><i></i></div>
 
         <!-- Hero -->
         <div class="lp-hero" id="top">
@@ -67,7 +68,7 @@
           <div class="lp-wrap hero-grid">
             <div class="hero-copy">
               <span class="eyebrow"><span class="pulse"></span>Job post → ready-to-send application</span>
-              <h1 class="display">Apply like you had <em>a career coach</em> on call.</h1>
+              <h1 class="display split"><span class="w">Apply</span> <span class="w">like</span> <span class="w">you</span> <span class="w">had</span> <em class="w shimmer">a career coach</em> <span class="w">on</span> <span class="w">call.</span></h1>
               <p class="lead">Screenshot any job post. Vanilla gives you an honest fit check, a resume tailored to that role, and an outreach email to the recruiter, all built from your real experience. You review it, then drop it into Gmail drafts.</p>
               <div class="cta-row">
                 <button class="btn btn-google btn-lg" id="btnGoogleSignIn">
@@ -84,7 +85,8 @@
             </div>
 
             <!-- Product visual: a screenshot turning into the three outputs -->
-            <div class="hero-visual" aria-hidden="true">
+            <div class="hero-visual" aria-hidden="true" data-tilt>
+              <div class="hv-orbit"></div>
               <div class="hv-shot">
                 <div class="hv-shot-head">
                   <span class="hv-logo">N</span>
@@ -110,7 +112,7 @@
 
               <div class="hv-card hv-mail">
                 <div class="hv-mini">To careers@northwind.example</div>
-                <div class="hv-t2">Application: Senior Product Analyst</div>
+                <div class="hv-t2"><span class="typed" data-type="Application: Senior Product Analyst">Application: Senior Product Analyst</span><span class="caret"></span></div>
                 <div class="hv-lines sm"><i></i><i style="width:80%"></i></div>
                 <div class="hv-saved"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 10.5 3.2 3L15 6.5"/></svg>Saved to Gmail drafts</div>
               </div>
@@ -118,13 +120,21 @@
           </div>
         </div>
 
+
+        <!-- Works-with marquee -->
+        <div class="marquee" aria-label="Works with screenshots from any job board">
+          <div class="marquee-track">
+            <span>LinkedIn posts</span><span>Naukri</span><span>Indeed</span><span>Wellfound</span><span>Company careers pages</span><span>WhatsApp forwards</span><span>Recruiter DMs</span><span>Telegram job channels</span>
+            <span aria-hidden="true">LinkedIn posts</span><span aria-hidden="true">Naukri</span><span aria-hidden="true">Indeed</span><span aria-hidden="true">Wellfound</span><span aria-hidden="true">Company careers pages</span><span aria-hidden="true">WhatsApp forwards</span><span aria-hidden="true">Recruiter DMs</span><span aria-hidden="true">Telegram job channels</span>
+          </div>
+        </div>
         <!-- Proof strip -->
         <div class="lp-wrap">
           <div class="proof-strip">
-            <div><strong>1</strong><span>screenshot in</span></div>
-            <div><strong>3</strong><span>things out: fit, resume, email</span></div>
-            <div><strong>0</strong><span>emails sent without your click</span></div>
-            <div><strong>4</strong><span>AI providers, with automatic fallback</span></div>
+            <div><strong data-count="1">1</strong><span>screenshot in</span></div>
+            <div><strong data-count="3">3</strong><span>things out: fit, resume, email</span></div>
+            <div><strong data-count="0" data-from="99">0</strong><span>emails sent without your click</span></div>
+            <div><strong data-count="4">4</strong><span>AI providers, with automatic fallback</span></div>
           </div>
         </div>
 
@@ -137,7 +147,7 @@
               <p class="lead">No forms to fill per job. The screenshot is the only input. Everything else comes from the profile you set up once.</p>
             </div>
 
-            <div class="demo" data-demo>
+            <div class="demo" data-demo data-spot>
               <div class="demo-tabs" role="tablist" aria-label="How Vanilla works">
                 <button role="tab" class="demo-tab" aria-selected="true" aria-controls="demo-1" id="tab-1" data-step="1"><span class="num">01</span><span><strong>Capture</strong><small>Snap or upload the post</small></span><i class="bar"></i></button>
                 <button role="tab" class="demo-tab" aria-selected="false" aria-controls="demo-2" id="tab-2" data-step="2" tabindex="-1"><span class="num">02</span><span><strong>Check the fit</strong><small>An honest verdict</small></span><i class="bar"></i></button>
@@ -197,6 +207,49 @@
           </div>
         </div>
 
+
+        <!-- Before / after -->
+        <div class="lp-section" id="tailor">
+          <div class="lp-wrap">
+            <div class="sec-head">
+              <span class="kicker">Tailoring, not inventing</span>
+              <h2 class="display-2">Same you. <em>Sharper story.</em></h2>
+              <p class="lead">Flip between your master resume and the version Vanilla tailors for this role. Same facts, reordered and reframed for what the job asks for.</p>
+            </div>
+            <div class="tailor reveal" data-tailor data-state="before">
+              <div class="tailor-card" data-spot>
+                <div class="tailor-switch" role="group" aria-label="Show resume version">
+                  <span class="pill-bg" aria-hidden="true"></span>
+                  <button type="button" data-set="before" aria-pressed="true">Master resume</button>
+                  <button type="button" data-set="after" aria-pressed="false">Tailored for this role</button>
+                </div>
+                <div class="cmp-name">Your Name</div>
+                <div class="cmp-sum">
+                  <span class="sum-before">Analyst with 4 years across sales operations and e-commerce.</span>
+                  <span class="sum-after"><mark>Product analyst</mark> with 4 years of <mark>experimentation and SQL</mark> work across e-commerce.</span>
+                </div>
+                <ul class="tailor-list">
+                  <li data-b="0" data-a="3">Managed weekly reporting for a 40-person sales team</li>
+                  <li data-b="1" data-a="1">Built <mark>SQL dashboards</mark> used by 3 departments</li>
+                  <li data-b="2" data-a="0"><mark>Ran 30+ A/B tests</mark> on the checkout flow, lifting conversion 4% <span class="cmp-tag">↑ moved to top</span></li>
+                  <li data-b="3" data-a="2">Coordinated quarterly planning with regional <mark>stakeholders</mark></li>
+                </ul>
+              </div>
+              <aside class="tailor-why">
+                <div class="why-head">The job asks for</div>
+                <div class="why-chips"><span>Experimentation</span><span>SQL</span><span>Stakeholders</span><span class="miss">Looker</span></div>
+                <div class="why-head">What changed, and why</div>
+                <ol class="why-list">
+                  <li>A/B testing moved to the top, because the post leads with experimentation.</li>
+                  <li>Summary reframed as "product analyst" to match the title.</li>
+                  <li>Looker isn't on your resume, so it isn't on this one either. It's flagged as a gap.</li>
+                </ol>
+              </aside>
+            </div>
+            <p class="cmp-foot">Every tailored line is already in your master resume. Vanilla can&apos;t add a skill you don&apos;t have.</p>
+          </div>
+        </div>
+
         <!-- Features bento -->
         <div class="lp-section" id="features">
           <div class="lp-wrap">
@@ -205,33 +258,33 @@
               <h2 class="display-2">Everything between <em>"saw a post"</em> and <em>"applied"</em>.</h2>
             </div>
             <div class="bento">
-              <article class="tile tile-wide reveal">
+              <article data-spot class="tile tile-wide reveal">
                 <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h6l3 3v11H6z"/><path d="M12 3v3h3M8.5 10h4M8.5 13h4"/></svg></div>
                 <h3>A resume tailored to every role, ATS-safe</h3>
                 <p>A clean .docx built for applicant-tracking systems. Single column, real text, no tables or graphics for a parser to choke on. Your own wording is reordered and focused, never made up.</p>
                 <div class="tile-art doc-art" aria-hidden="true"><i></i><i></i><i class="hl"></i><i></i><i class="hl"></i><i></i></div>
               </article>
-              <article class="tile reveal">
+              <article data-spot class="tile reveal">
                 <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="m7 10.3 2 2 4-4.3"/></svg></div>
                 <h3>An honest fit check</h3>
                 <p>Strong, partial or mismatch, with the reason and the gap spelled out before you spend any effort.</p>
               </article>
-              <article class="tile reveal">
+              <article data-spot class="tile reveal">
                 <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="10" rx="1.3"/><path d="m3.6 5.8 6.4 5 6.4-5"/></svg></div>
                 <h3>Gmail hand-off</h3>
                 <p>One tap saves the email to your Gmail drafts, resume attached. Or open it in Gmail with no extra permission at all.</p>
               </article>
-              <article class="tile reveal">
+              <article data-spot class="tile reveal">
                 <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.2A1.2 1.2 0 0 1 4.2 5h3.6l1.3 1.6h6.7A1.2 1.2 0 0 1 17 7.8v6.4a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 14.2z"/></svg></div>
                 <h3>A log that follows up for you</h3>
                 <p>Every application is tracked by company, role and status. When it goes quiet, draft a polite follow-up in one tap.</p>
               </article>
-              <article class="tile reveal">
+              <article data-spot class="tile reveal">
                 <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3 1.6 3.9 3.9 1.6-3.9 1.6L10 14l-1.6-3.9-3.9-1.6 3.9-1.6z"/></svg></div>
                 <h3>Pick your AI</h3>
                 <p>Gemini, Claude, GPT or OpenRouter. Start on Gemini's free tier. If one model is busy, Vanilla falls back to another automatically.</p>
               </article>
-              <article class="tile tile-wide tile-dark reveal">
+              <article data-spot class="tile tile-wide tile-dark reveal">
                 <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="8" height="15" rx="2"/><path d="M9 14.5h2"/></svg></div>
                 <h3>Made for the moment you see the post</h3>
                 <p>You find most jobs on your phone, so Vanilla runs there too. Install it to your home screen, snap the post, and finish on any device. Your applications sync wherever you sign in.</p>
@@ -293,6 +346,11 @@
           </div>
         </div>
 
+
+        <div class="sticky-cta" aria-hidden="true">
+          <span>Free · 2-minute setup</span>
+          <button class="btn btn-primary btn-sm" type="button" data-signin tabindex="-1">Get started</button>
+        </div>
         <footer class="lp-footer">
           <div class="lp-wrap foot-row">
             <span class="brand small">Vanilla<span class="dot"></span></span>
