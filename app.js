@@ -844,7 +844,8 @@ function renderResumeCard() {
 // a real Gmail draft is the only way to hand someone a finished application:
 // recipient, subject, body AND the tailored .docx, ready to review and send.
 //
-// Nothing is ever sent. gmail.compose can only create drafts.
+// Nothing is ever sent: the app only calls drafts.create. (gmail.compose itself
+// would also allow sending; this code deliberately never does.)
 // ---------------------------------------------------------------------------
 
 // Firebase does not persist or refresh the Google OAuth access token — it exists

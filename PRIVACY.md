@@ -49,8 +49,10 @@ retained after the request completes. Only the extracted text result is saved.
 
 Saving a draft to Gmail requires a separate Google permission prompt, shown the
 first time you press **Save to Gmail drafts** — never at sign-up. The permission
-requested is `gmail.compose`, the narrowest scope for the job: it can create and
-update drafts, and it **cannot send mail and cannot read your existing mail**.
+requested is `gmail.compose`, the narrowest Google scope that can create drafts. It
+cannot read your existing mail. Google's definition of this scope also covers sending,
+but Vanilla **only ever creates drafts — it never sends mail on your behalf**; sending is
+always something you do yourself from Gmail.
 
 When you use it, the drafted email and the attached resume are transmitted to
 Google's Gmail API and stored as a draft in your own mailbox, where they are

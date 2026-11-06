@@ -17,7 +17,7 @@
 // vercel.json serves this file with `Cache-Control: no-cache`, the browser
 // re-checks it on navigation, so a client stuck on the old worker self-heals
 // within about two loads.
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE = `vanilla-${CACHE_VERSION}`;
 
 // Only immutable assets belong here. Deliberately NOT index.html/app.js/style.css.

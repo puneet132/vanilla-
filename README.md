@@ -92,8 +92,9 @@ Two routes, both ending in something you send yourself — nothing auto-sends, e
 - **Save to Gmail drafts.** Creates a real Gmail draft with your resume attached.
   Asks for Google's `gmail.compose` scope the first time you use it — deliberately a
   second, separate consent prompt rather than an extra scope bolted onto sign-in, so
-  signing in never implies mailbox access. That scope can create and update drafts; it
-  cannot send mail and cannot read existing mail. The access token lives in memory for
+  signing in never implies mailbox access. That scope cannot read existing mail. Google's
+  definition of it also allows sending, but the app only ever calls drafts.create —
+  it never sends. The access token lives in memory for
   the session only and is dropped on sign-out.
 - **Download + mailto.** Downloads the `.docx` and opens the draft in whatever mail
   client the OS has. No attachment — you attach the downloaded file yourself.
