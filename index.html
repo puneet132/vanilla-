@@ -3,68 +3,334 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Vanilla</title>
-<meta name="description" content="Screenshot a job posting and get a fit check, a tailored ATS-safe resume, and a drafted application email — reviewed by you before anything sends.">
-<meta name="theme-color" content="#221F1A">
+<title>Vanilla — screenshot a job post, get a ready-to-send application</title>
+<meta name="description" content="Screenshot a job posting and get an honest fit check, a tailored ATS-safe resume (.docx) and a drafted outreach email — saved to your Gmail drafts. Nothing sends without you.">
+<meta name="theme-color" content="#FAF7F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E0D0B" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Vanilla — from job post to ready-to-send application">
+<meta property="og:description" content="Fit check, tailored resume and outreach email from a single screenshot. You review everything before it sends.">
+<meta property="og:image" content="icons/icon-512.png">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script src="theme.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 <div id="app">
   <header class="top">
-    <div class="brand"><span class="dot"></span> Vanilla</div>
-    <img id="userAvatar" class="avatar" alt="">
+    <a class="brand" href="#top" aria-label="Vanilla home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m4.5 7.8 7.5 5.6 7.5-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      Vanilla<span class="dot"></span>
+    </a>
+    <nav class="lp-links" aria-label="Landing page">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="top-actions">
+      <button class="icon-btn" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Toggle theme">
+        <svg class="i-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 12.3A6.8 6.8 0 0 1 7.7 3.5a6.8 6.8 0 1 0 8.8 8.8Z"/></svg>
+        <svg class="i-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.4"/><path d="M10 2v1.6M10 16.4V18M2 10h1.6M16.4 10H18M4.3 4.3l1.2 1.2M14.5 14.5l1.2 1.2M4.3 15.7l1.2-1.2M14.5 5.5l1.2-1.2"/></svg>
+      </button>
+      <button class="btn btn-primary btn-sm top-signin" type="button" data-signin>Sign in</button>
+      <img id="userAvatar" class="avatar" alt="Your account">
+    </div>
   </header>
   <div class="layout">
-    <nav class="sidebar" id="sidebarNav">
+    <nav class="sidebar" id="sidebarNav" aria-label="App">
       <button class="navlink" data-nav="home"><svg class="navicon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5a1.5 1.5 0 0 1 1.5-1.5h1.2l.9-1.4a1 1 0 0 1 .84-.6h4.12a1 1 0 0 1 .84.6l.9 1.4h1.2A1.5 1.5 0 0 1 17 7.5v6A1.5 1.5 0 0 1 15.5 15h-11A1.5 1.5 0 0 1 3 13.5v-6Z"/><circle cx="10" cy="10.4" r="2.5"/></svg><span class="navlabel">Capture</span></button>
       <button class="navlink" data-nav="log"><svg class="navicon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.2A1.2 1.2 0 0 1 4.2 5h3.6l1.3 1.6h6.7A1.2 1.2 0 0 1 17 7.8v6.4A1.2 1.2 0 0 1 15.8 15.4H4.2A1.2 1.2 0 0 1 3 14.2V6.2Z"/></svg><span class="navlabel">Applications</span></button>
       <button class="navlink" data-nav="profile"><svg class="navicon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><circle cx="12" cy="5" r="1.7"/><line x1="3" y1="10" x2="17" y2="10"/><circle cx="7" cy="10" r="1.7"/><line x1="3" y1="15" x2="17" y2="15"/><circle cx="10.5" cy="15" r="1.7"/></svg><span class="navlabel">Profile</span></button>
-    </nav>
-  <main>
-
-    <section id="screen-login" class="screen active">
-      <div class="login-hero">
-        <div class="mark">
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-            <rect x="4" y="9" width="26" height="18" rx="2" stroke="#F3EEE3" stroke-width="1.7"/>
-            <path d="M5.5 10.3 17 19.5l11.5-9.2" stroke="#F3EEE3" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="25.5" cy="24.5" r="6.5" fill="#1F5D5B" stroke="#221F1A" stroke-width="1.5"/>
-            <path d="M22.8 24.6 24.7 26.5 28 22.6" stroke="#F3EEE3" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <h1>Vanilla</h1>
-        <p class="sub">Screenshot a job posting. Get a fit check, a tailored resume, and a drafted email. Your applications, tracked and followed up on, wherever you sign in.</p>
+      <div class="sidebar-foot">
+        <div class="sidebar-tip"><strong>Tip</strong> LinkedIn posts with a visible "share your resume at…" line work best.</div>
       </div>
-      <button class="btn btn-google" id="btnGoogleSignIn">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.95v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.03l3-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.97l3 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
-        Sign in with Google
-      </button>
-      <p class="sub center" style="margin-top:16px;">Your data (profile, applications, resumes) stays tied to your account. Your AI provider keys are encrypted and never leave the server.</p>
+    </nav>
+  <main id="main">
+
+    <!-- ===================== LANDING (signed-out) ===================== -->
+    <section id="screen-login" class="screen active">
+      <div class="lp">
+
+        <!-- Hero -->
+        <div class="lp-hero" id="top">
+          <div class="lp-glow" aria-hidden="true"></div>
+          <div class="lp-wrap hero-grid">
+            <div class="hero-copy">
+              <span class="eyebrow"><span class="pulse"></span>Job post → ready-to-send application</span>
+              <h1 class="display">Apply like you had <em>a career coach</em> on call.</h1>
+              <p class="lead">Screenshot any job post. Vanilla gives you an honest fit check, a resume tailored to that role, and an outreach email to the recruiter, all built from your real experience. You review it, then drop it into Gmail drafts.</p>
+              <div class="cta-row">
+                <button class="btn btn-google btn-lg" id="btnGoogleSignIn">
+                  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.95v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.03l3-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.97l3 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+                  Continue with Google
+                </button>
+                <a class="btn btn-ghost btn-lg" href="#how">See how it works</a>
+              </div>
+              <ul class="trust-row">
+                <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 10.5 3.2 3L15 6.5"/></svg>Free to use</li>
+                <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 10.5 3.2 3L15 6.5"/></svg>Nothing sends without you</li>
+                <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 10.5 3.2 3L15 6.5"/></svg>Works on your phone</li>
+              </ul>
+            </div>
+
+            <!-- Product visual: a screenshot turning into the three outputs -->
+            <div class="hero-visual" aria-hidden="true">
+              <div class="hv-shot">
+                <div class="hv-shot-head">
+                  <span class="hv-logo">N</span>
+                  <div><div class="hv-t">Senior Product Analyst</div><div class="hv-s">Northwind Labs · Bengaluru · Hybrid</div></div>
+                </div>
+                <div class="hv-lines"><i></i><i></i><i style="width:72%"></i></div>
+                <div class="hv-req"><span>SQL</span><span>A/B testing</span><span>Stakeholders</span><span>Looker</span></div>
+                <div class="hv-lines"><i style="width:88%"></i><i style="width:64%"></i></div>
+                <div class="hv-hl">Share your resume at careers@northwind.example</div>
+                <div class="hv-scan"></div>
+              </div>
+
+              <div class="hv-card hv-fit">
+                <div class="hv-row"><span class="badge badge-strong">Strong fit</span><span class="hv-mini">Fit check</span></div>
+                <div class="hv-body">4 years running experiments and SQL analysis lines up with the core of this role.</div>
+                <div class="hv-gap">Gap: no Looker listed. Worth mentioning Tableau.</div>
+              </div>
+
+              <div class="hv-card hv-doc">
+                <span class="hv-docicon">W</span>
+                <div><div class="hv-t2">Resume_Northwind.docx</div><div class="hv-mini">Tailored · ATS-safe · 1 page</div></div>
+              </div>
+
+              <div class="hv-card hv-mail">
+                <div class="hv-mini">To careers@northwind.example</div>
+                <div class="hv-t2">Application: Senior Product Analyst</div>
+                <div class="hv-lines sm"><i></i><i style="width:80%"></i></div>
+                <div class="hv-saved"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 10.5 3.2 3L15 6.5"/></svg>Saved to Gmail drafts</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Proof strip -->
+        <div class="lp-wrap">
+          <div class="proof-strip">
+            <div><strong>1</strong><span>screenshot in</span></div>
+            <div><strong>3</strong><span>things out: fit, resume, email</span></div>
+            <div><strong>0</strong><span>emails sent without your click</span></div>
+            <div><strong>4</strong><span>AI providers, with automatic fallback</span></div>
+          </div>
+        </div>
+
+        <!-- How it works (interactive demo) -->
+        <div class="lp-section" id="how">
+          <div class="lp-wrap">
+            <div class="sec-head">
+              <span class="kicker">How it works</span>
+              <h2 class="display-2">Three steps. <em>About a minute.</em></h2>
+              <p class="lead">No forms to fill per job. The screenshot is the only input. Everything else comes from the profile you set up once.</p>
+            </div>
+
+            <div class="demo" data-demo>
+              <div class="demo-tabs" role="tablist" aria-label="How Vanilla works">
+                <button role="tab" class="demo-tab" aria-selected="true" aria-controls="demo-1" id="tab-1" data-step="1"><span class="num">01</span><span><strong>Capture</strong><small>Snap or upload the post</small></span><i class="bar"></i></button>
+                <button role="tab" class="demo-tab" aria-selected="false" aria-controls="demo-2" id="tab-2" data-step="2" tabindex="-1"><span class="num">02</span><span><strong>Check the fit</strong><small>An honest verdict</small></span><i class="bar"></i></button>
+                <button role="tab" class="demo-tab" aria-selected="false" aria-controls="demo-3" id="tab-3" data-step="3" tabindex="-1"><span class="num">03</span><span><strong>Review &amp; send</strong><small>Resume + email, your call</small></span><i class="bar"></i></button>
+              </div>
+
+              <div class="demo-stage">
+                <div class="demo-panel is-on" role="tabpanel" id="demo-1" aria-labelledby="tab-1">
+                  <div class="mock-phone">
+                    <div class="mock-top"><span></span></div>
+                    <div class="mock-h">Screenshot the post</div>
+                    <div class="mock-drop">
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5a1.5 1.5 0 0 1 1.5-1.5h1.2l.9-1.4a1 1 0 0 1 .84-.6h4.12a1 1 0 0 1 .84.6l.9 1.4h1.2A1.5 1.5 0 0 1 17 7.5v6A1.5 1.5 0 0 1 15.5 15h-11A1.5 1.5 0 0 1 3 13.5v-6Z"/><circle cx="10" cy="10.4" r="2.5"/></svg>
+                      <span>Take photo</span>
+                    </div>
+                    <div class="mock-btn ghost">Upload from gallery</div>
+                    <div class="mock-status"><span class="mini-spin"></span>Reading the post…</div>
+                  </div>
+                  <ul class="demo-notes">
+                    <li><strong>Reads what matters.</strong> Role, company, requirements, the recruiter's email, even "please mention notice period" asks.</li>
+                    <li><strong>Handles messy posts.</strong> If a screenshot holds more than one role, you pick which one you mean.</li>
+                    <li><strong>Asks before guessing.</strong> If the post wants your notice period or CTC, it confirms with you once and remembers.</li>
+                  </ul>
+                </div>
+
+                <div class="demo-panel" role="tabpanel" id="demo-2" aria-labelledby="tab-2" hidden>
+                  <div class="mock-phone">
+                    <div class="mock-top"><span></span></div>
+                    <div class="mock-h">Fit check</div>
+                    <div class="verdict-banner verdict-strong"><div class="title">Strong fit</div><div>Your experimentation and SQL work maps to 3 of the 4 core requirements.</div><div class="mock-gap">Gap: Looker isn't on your resume.</div></div>
+                    <div class="verdict-banner verdict-mismatch mock-dim"><div class="title">Doesn't look like a fit</div><div>Needs 8+ years of people management.</div></div>
+                  </div>
+                  <ul class="demo-notes">
+                    <li><strong>Honest, not flattering.</strong> Strong, partial or mismatch, with the reason in plain words.</li>
+                    <li><strong>Saves you from long shots.</strong> On a mismatch you can discard it or apply anyway. It's your call, and it's logged either way.</li>
+                    <li><strong>Remembers repeats.</strong> Applied to that company before? You'll see when, and what happened.</li>
+                  </ul>
+                </div>
+
+                <div class="demo-panel" role="tabpanel" id="demo-3" aria-labelledby="tab-3" hidden>
+                  <div class="mock-phone">
+                    <div class="mock-top"><span></span></div>
+                    <div class="mock-h">Review &amp; send</div>
+                    <div class="mock-field"><label>Subject</label><div>Application: Senior Product Analyst</div></div>
+                    <div class="mock-field"><label>Body</label><div class="mock-lines"><i></i><i></i><i style="width:70%"></i></div></div>
+                    <div class="mock-btn">Save to Gmail drafts</div>
+                    <div class="mock-btn ghost">Download .docx</div>
+                  </div>
+                  <ul class="demo-notes">
+                    <li><strong>A resume tailored to this role.</strong> Your bullets, reordered and emphasised for the role. It never invents experience you don't have.</li>
+                    <li><strong>An email worth opening.</strong> Short, specific, addressed to the right inbox, with your resume attached.</li>
+                    <li><strong>You press the button.</strong> It lands in Gmail drafts or your mail app. Vanilla can't send on its own.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Features bento -->
+        <div class="lp-section" id="features">
+          <div class="lp-wrap">
+            <div class="sec-head">
+              <span class="kicker">Features</span>
+              <h2 class="display-2">Everything between <em>"saw a post"</em> and <em>"applied"</em>.</h2>
+            </div>
+            <div class="bento">
+              <article class="tile tile-wide reveal">
+                <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h6l3 3v11H6z"/><path d="M12 3v3h3M8.5 10h4M8.5 13h4"/></svg></div>
+                <h3>A resume tailored to every role, ATS-safe</h3>
+                <p>A clean .docx built for applicant-tracking systems. Single column, real text, no tables or graphics for a parser to choke on. Your own wording is reordered and focused, never made up.</p>
+                <div class="tile-art doc-art" aria-hidden="true"><i></i><i></i><i class="hl"></i><i></i><i class="hl"></i><i></i></div>
+              </article>
+              <article class="tile reveal">
+                <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="m7 10.3 2 2 4-4.3"/></svg></div>
+                <h3>An honest fit check</h3>
+                <p>Strong, partial or mismatch, with the reason and the gap spelled out before you spend any effort.</p>
+              </article>
+              <article class="tile reveal">
+                <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="10" rx="1.3"/><path d="m3.6 5.8 6.4 5 6.4-5"/></svg></div>
+                <h3>Gmail hand-off</h3>
+                <p>One tap saves the email to your Gmail drafts, resume attached. Or open it in Gmail with no extra permission at all.</p>
+              </article>
+              <article class="tile reveal">
+                <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.2A1.2 1.2 0 0 1 4.2 5h3.6l1.3 1.6h6.7A1.2 1.2 0 0 1 17 7.8v6.4a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 14.2z"/></svg></div>
+                <h3>A log that follows up for you</h3>
+                <p>Every application is tracked by company, role and status. When it goes quiet, draft a polite follow-up in one tap.</p>
+              </article>
+              <article class="tile reveal">
+                <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3 1.6 3.9 3.9 1.6-3.9 1.6L10 14l-1.6-3.9-3.9-1.6 3.9-1.6z"/></svg></div>
+                <h3>Pick your AI</h3>
+                <p>Gemini, Claude, GPT or OpenRouter. Start on Gemini's free tier. If one model is busy, Vanilla falls back to another automatically.</p>
+              </article>
+              <article class="tile tile-wide tile-dark reveal">
+                <div class="tile-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="8" height="15" rx="2"/><path d="M9 14.5h2"/></svg></div>
+                <h3>Made for the moment you see the post</h3>
+                <p>You find most jobs on your phone, so Vanilla runs there too. Install it to your home screen, snap the post, and finish on any device. Your applications sync wherever you sign in.</p>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy & trust -->
+        <div class="lp-section" id="privacy">
+          <div class="lp-wrap">
+            <div class="trust-grid">
+              <div class="sec-head left">
+                <span class="kicker">Privacy &amp; trust</span>
+                <h2 class="display-2">Your data, your keys, <em>your send button.</em></h2>
+                <p class="lead">A job search is personal. Vanilla is built so you never have to take its word for it.</p>
+                <a class="link-arrow" href="PRIVACY.md" target="_blank" rel="noopener">Read the privacy policy →</a>
+              </div>
+              <ul class="trust-list">
+                <li class="reveal"><span class="t-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg></span><div><strong>Keys encrypted with AES-256-GCM</strong><p>Your AI provider keys are encrypted on the server and never sent back to the browser. You only ever see a masked preview.</p></div></li>
+                <li class="reveal"><span class="t-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="10" rx="1.3"/><path d="m3.6 5.8 6.4 5 6.4-5"/></svg></span><div><strong>Gmail can only create drafts</strong><p>Gmail access is requested only when you tap "Save to Gmail drafts", and only the compose scope. It can't read your inbox or send anything.</p></div></li>
+                <li class="reveal"><span class="t-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5 4 5v4.5c0 3.8 2.6 6.9 6 8 3.4-1.1 6-4.2 6-8V5z"/><path d="m7.5 10 1.8 1.8L12.8 8"/></svg></span><div><strong>Nothing invented</strong><p>Everything comes from the profile you wrote. No fake titles, skills or numbers. If it isn't in your resume, it isn't in the output.</p></div></li>
+                <li class="reveal"><span class="t-ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4h4v2M6 6l.7 10h6.6L14 6"/></svg></span><div><strong>Delete everything, anytime</strong><p>One button erases your profile, every application and follow-up, and your saved keys. It's permanent.</p></div></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="lp-section" id="faq">
+          <div class="lp-wrap narrow">
+            <div class="sec-head">
+              <span class="kicker">FAQ</span>
+              <h2 class="display-2">Good questions.</h2>
+            </div>
+            <div class="faq">
+              <details><summary>Is Vanilla free?</summary><p>Yes. You connect your own AI provider key, so any AI usage is billed to you by that provider, not by us. Google's Gemini and OpenRouter both have free tiers with no card needed, which is the easiest place to start.</p></details>
+              <details><summary>Do I need a ChatGPT Plus or Claude Pro subscription?</summary><p>No, and those subscriptions don't include an API key anyway. You need a developer API key from the provider's console. The app links straight to each one.</p></details>
+              <details><summary>Will it ever send an email on my behalf?</summary><p>No. Vanilla prepares the email and resume. You choose to save it to Gmail drafts, open it in Gmail, or open it in your mail app. Its Gmail permission can create drafts only, so it can't send.</p></details>
+              <details><summary>Why does Google say the app isn't verified?</summary><p>The first time you save to Gmail drafts, Google shows a warning because the app hasn't been through Google's verification review. The permission it asks for can only create drafts. If you'd rather skip it, use "Open in Gmail", which needs no permission at all.</p></details>
+              <details><summary>Will it make up experience to get me through?</summary><p>No. The fit check and resume only use what's in your profile. Bullets are reordered and emphasised for the role, never invented. A mismatch is called a mismatch.</p></details>
+              <details><summary>Does it work with LinkedIn, Naukri, Indeed…?</summary><p>Any screenshot of a job post works. LinkedIn posts with a visible "share your resume at…" line work best, because the recruiter's email is right there.</p></details>
+              <details><summary>What happens to my data?</summary><p>Your profile and applications are stored against your Google account so they sync across devices. Provider keys are encrypted at rest. You can delete your account and everything in it from the Profile screen. <a class="link" href="PRIVACY.md" target="_blank" rel="noopener">Privacy policy</a> · <a class="link" href="TERMS.md" target="_blank" rel="noopener">Terms</a>.</p></details>
+            </div>
+          </div>
+        </div>
+
+        <!-- Final CTA -->
+        <div class="lp-wrap">
+          <div class="final-cta">
+            <div class="lp-glow small" aria-hidden="true"></div>
+            <h2 class="display-2">Your next application is <em>one screenshot away.</em></h2>
+            <p class="lead">Set up your profile once, in about two minutes. Then every job post becomes a ready-to-send application.</p>
+            <button class="btn btn-google btn-lg" type="button" data-signin>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.95v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.03l3-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.97l3 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+              Continue with Google
+            </button>
+            <p class="fine">Signing in only shares your name, email and photo. Gmail access is asked for separately, only if you use it.</p>
+          </div>
+        </div>
+
+        <footer class="lp-footer">
+          <div class="lp-wrap foot-row">
+            <span class="brand small">Vanilla<span class="dot"></span></span>
+            <nav aria-label="Legal"><a href="PRIVACY.md" target="_blank" rel="noopener">Privacy</a><a href="TERMS.md" target="_blank" rel="noopener">Terms</a></nav>
+            <span class="fine">© 2026 Vanilla</span>
+          </div>
+        </footer>
+      </div>
     </section>
 
+    <!-- ===================== APP SCREENS (signed-in) ===================== -->
     <section id="screen-home" class="screen">
-      <h1>Screenshot the post</h1>
-      <p class="sub">Camera or gallery — that's the only input. Everything else, the app does for you.</p>
-      <div class="model-select-row">
-        <select id="providerSelect"></select>
-        <select id="modelSelect"></select>
+      <div class="screen-head">
+        <span class="kicker">New application</span>
+        <h1>Screenshot the post</h1>
+        <p class="sub">Camera or gallery. That's the only input. The app handles everything else.</p>
       </div>
-      <div class="capture-row">
-        <button class="btn btn-primary" id="btnCamera"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5a1.5 1.5 0 0 1 1.5-1.5h1.2l.9-1.4a1 1 0 0 1 .84-.6h4.12a1 1 0 0 1 .84.6l.9 1.4h1.2A1.5 1.5 0 0 1 17 7.5v6A1.5 1.5 0 0 1 15.5 15h-11A1.5 1.5 0 0 1 3 13.5v-6Z"/><circle cx="10" cy="10.4" r="2.5"/></svg> Take Photo</button>
-        <button class="btn btn-outline" id="btnUpload"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.4"/><circle cx="7.3" cy="8" r="1.2"/><path d="m4 14.3 3.7-3.7a1 1 0 0 1 1.4 0l2.2 2.2M12 12l1.5-1.5a1 1 0 0 1 1.4 0L17 12.4"/></svg> Upload from Gallery</button>
+      <div class="capture-card">
+        <div class="capture-art" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 16V11a3 3 0 0 1 3-3h5M32 8h5a3 3 0 0 1 3 3v5M40 32v5a3 3 0 0 1-3 3h-5M16 40h-5a3 3 0 0 1-3-3v-5"/><path d="M16 19h16M16 24h16M16 29h10"/></svg>
+        </div>
+        <div class="capture-row">
+          <button class="btn btn-primary btn-lg" id="btnCamera"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5a1.5 1.5 0 0 1 1.5-1.5h1.2l.9-1.4a1 1 0 0 1 .84-.6h4.12a1 1 0 0 1 .84.6l.9 1.4h1.2A1.5 1.5 0 0 1 17 7.5v6A1.5 1.5 0 0 1 15.5 15h-11A1.5 1.5 0 0 1 3 13.5v-6Z"/><circle cx="10" cy="10.4" r="2.5"/></svg> Take Photo</button>
+          <button class="btn btn-outline btn-lg" id="btnUpload"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.4"/><circle cx="7.3" cy="8" r="1.2"/><path d="m4 14.3 3.7-3.7a1 1 0 0 1 1.4 0l2.2 2.2M12 12l1.5-1.5a1 1 0 0 1 1.4 0L17 12.4"/></svg> Upload from Gallery</button>
+        </div>
+        <input type="file" id="fileCamera" accept="image/*" capture="environment">
+        <input type="file" id="fileUpload" accept="image/*">
+        <div class="model-select-row">
+          <label class="select-wrap"><span>Provider</span><select id="providerSelect"></select></label>
+          <label class="select-wrap"><span>Model</span><select id="modelSelect"></select></label>
+        </div>
       </div>
-      <input type="file" id="fileCamera" accept="image/*" capture="environment">
-      <input type="file" id="fileUpload" accept="image/*">
-      <div class="hr"></div>
-      <p class="sub" style="margin-bottom:0;">Works best on LinkedIn job-post screenshots — recruiter line, requirements, and the "share your resume at…" line all get read automatically.</p>
+      <ol class="steps-hint">
+        <li><span>1</span>Fit check</li>
+        <li><span>2</span>Tailored resume</li>
+        <li><span>3</span>Email draft</li>
+      </ol>
+      <p class="sub small-note">Works best on LinkedIn job-post screenshots. The recruiter line, requirements and the "share your resume at…" line are all read automatically.</p>
     </section>
 
     <section id="screen-noprovider" class="screen">
@@ -74,8 +340,11 @@
     </section>
 
     <section id="screen-processing" class="screen">
-      <div class="spinner"></div>
-      <div class="center status-text" id="processingStatus">Reading the post…</div>
+      <div class="processing">
+        <div class="orb" aria-hidden="true"><div class="spinner"></div></div>
+        <div class="center status-text" id="processingStatus" role="status" aria-live="polite">Reading the post…</div>
+        <div class="skeleton" aria-hidden="true"><i></i><i></i><i style="width:60%"></i></div>
+      </div>
     </section>
 
     <section id="screen-unreadable" class="screen">
@@ -338,6 +607,7 @@
   </nav>
 </div>
 <div class="toast" id="toast"></div>
+<script src="ui.js" defer></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

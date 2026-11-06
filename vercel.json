@@ -26,6 +26,8 @@
     { "source": "/gmail-error.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/http-error.mjs", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
     { "source": "/firebase-init.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-    { "source": "/style.css", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+    { "source": "/style.css", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/theme.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/ui.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
   ]
 }
