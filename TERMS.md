@@ -4,7 +4,8 @@
 > reviewed by a lawyer.** If this app is ever listed publicly or offered beyond
 > personal use, get sections 4, 8 and 10 reviewed by someone qualified.
 
-**Last updated:** 6 September 2026
+**Last updated:** 7 November 2026
+**Owner and operator:** Puneet Gupta ("we", "us")
 **Contact:** puneetgupta132@gmail.com
 
 ## 1. What you're agreeing to
@@ -21,8 +22,10 @@ everything before anything leaves your hands.
 draft: download the resume as a `.docx` and open the email in your own mail
 application, or — if you grant the permission when asked — save the email as a
 **draft** in your own Gmail account with the resume attached. Drafts are not
-sent. The Gmail permission used (`gmail.compose`) cannot send mail and cannot
-read your existing mail. Pressing send is always your own action.
+sent. The Gmail permission used (`gmail.compose`) cannot read your existing mail.
+Google's definition of that permission also covers sending, but Vanilla only ever
+uses it to create a draft and never sends mail on your behalf. Pressing send is
+always your own action.
 
 ## 3. You need your own AI provider key
 
@@ -58,14 +61,30 @@ needed to operate the service: storing your data, transmitting it to the AI
 provider you select, and — only when you ask for it — creating a draft in your
 Gmail account. See the [Privacy Policy](PRIVACY.md).
 
-## 7. Availability
+## 7. Ownership and intellectual property
+
+Vanilla is owned by Puneet Gupta. The service and everything that makes it up,
+including the source code, design, user interface, text, graphics, the logo and
+the name "Vanilla" as used for this product, belong to Puneet Gupta and are
+protected by copyright and trademark law.
+
+You may use the service for your own job search. You may not copy, reproduce,
+modify, resell, rebrand, host or distribute any part of it. You may not use the
+Vanilla name or logo, or anything confusingly similar, for any product, service,
+domain or social account, and you may not register or apply to register any such
+name or logo as a trademark, without our written permission. Making the source
+code publicly viewable does not grant a licence to it (see `LICENSE`).
+
+Your own content stays yours (section 6).
+
+## 8. Availability
 
 The service is provided **as is**, with no guarantee of uptime, accuracy, or
 fitness for any purpose. It depends on third parties (Google Firebase, Vercel,
 and your chosen AI provider); their outages will affect it. It may change or be
 discontinued at any time.
 
-## 8. Limitation of liability
+## 9. Limitation of liability
 
 To the fullest extent permitted by law, we are not liable for indirect or
 consequential loss, including lost job opportunities, lost income, or
@@ -76,14 +95,14 @@ Liability caps vary by jurisdiction and some limitations are unenforceable —
 this clause has not been reviewed by counsel and should be before the app is
 offered beyond personal use.
 
-## 9. Ending your use
+## 10. Ending your use
 
 You may delete your account at any time from Profile → *Delete account*, which
 permanently erases your data held by this app. Drafts you already saved into
 your own Gmail are in your mailbox and are not affected — delete those yourself.
 We may suspend access for breach of these terms.
 
-## 10. Governing law
+## 11. Governing law
 
 These terms are governed by the laws of India. This reflects where the operator
 is based and has not been reviewed by counsel; it should be confirmed before the
@@ -93,5 +112,5 @@ app is offered beyond personal use.
 
 ### Still outstanding
 
-- [ ] Legal review of sections 4, 8, and 10
+- [ ] Legal review of sections 4, 7, 9 and 11
 - [ ] If the app is ever opened beyond personal use: link this from the sign-in screen, and add an acceptance checkpoint at first sign-in if required

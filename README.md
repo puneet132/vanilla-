@@ -1,4 +1,6 @@
-# Vanilla
+# Vanilla™
+
+© 2026 Puneet Gupta. All rights reserved. This repository is public for transparency only; no licence is granted. See [LICENSE](LICENSE).
 
 Sign in with Google, screenshot a job posting, get a fit check, a JD-tailored ATS-safe
 resume, and a drafted email — reviewed before anything sends. Applications are tracked
