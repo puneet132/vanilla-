@@ -962,7 +962,9 @@ document.getElementById("btnGmailDraft").addEventListener("click", async (e) => 
   const btn = e.currentTarget;
   const to = document.getElementById("emailTo").value;
   const subject = document.getElementById("emailSubject").value;
-  const body = document.getElementById("emailBody").value;
+  // Last safety net: a body that is still one run-on line (an older session,
+  // or a paste) gets its paragraphs back before it leaves the app.
+  const body = formatEmailBody(document.getElementById("emailBody").value);
 
   if (!to) { toast("No recipient address on this application"); return; }
 
@@ -1050,7 +1052,9 @@ document.getElementById("btnGmailCompose").addEventListener("click", async (e) =
   const btn = e.currentTarget;
   const to = document.getElementById("emailTo").value;
   const subject = document.getElementById("emailSubject").value;
-  const body = document.getElementById("emailBody").value;
+  // Last safety net: a body that is still one run-on line (an older session,
+  // or a paste) gets its paragraphs back before it leaves the app.
+  const body = formatEmailBody(document.getElementById("emailBody").value);
 
   const original = btn.innerHTML;
   btn.disabled = true;
@@ -1087,7 +1091,9 @@ document.getElementById("btnMailto").addEventListener("click", async (e) => {
   const btn = e.currentTarget;
   const to = document.getElementById("emailTo").value;
   const subject = document.getElementById("emailSubject").value;
-  const body = document.getElementById("emailBody").value;
+  // Last safety net: a body that is still one run-on line (an older session,
+  // or a paste) gets its paragraphs back before it leaves the app.
+  const body = formatEmailBody(document.getElementById("emailBody").value);
   const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   // This used to promise "Resume downloads separately" and then download
