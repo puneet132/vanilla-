@@ -113,8 +113,16 @@ async function extractText(base64, filename) {
   }
 
   if (name.endsWith(".pdf")) {
+    // pdf-parse's serverless entry point. It must load before PDFParse: it
+    // statically requires @napi-rs/canvas (so Vercel's bundler ships it — the
+    // plain entry loads it dynamically and the tracer missed it, which made
+    // every PDF upload fail in production with "Cannot find module
+    // '@napi-rs/canvas'"), installs the DOMMatrix/Path2D/ImageData globals
+    // pdf.js needs in Node, and provides an in-process worker.
+    const { CanvasFactory, getData } = require("pdf-parse/worker");
     const { PDFParse } = require("pdf-parse");
-    const parser = new PDFParse({ data: new Uint8Array(buf) });
+    PDFParse.setWorker(getData());
+    const parser = new PDFParse({ data: new Uint8Array(buf), CanvasFactory });
     try {
       const { text } = await parser.getText();
       // pdf-parse injects "-- 3 of 12 --" separators between pages; they are
@@ -159,7 +167,10 @@ module.exports = async (req, res) => {
   try {
     text = await extractText(file, filename);
   } catch (e) {
-    return res.status(400).json({ error: e.userMessage || "could not read that file" });
+    // Log the real cause: a bare "could not read that file" with nothing in
+    // the logs is how the PDF bundling bug went unnoticed.
+    console.error("profile-resume-parse: text extraction failed:", filename, e);
+    return res.status(400).json({ error: e.userMessage || "Couldn't read that file. Try saving it again as a PDF or .docx and re-uploading." });
   }
 
   // A scanned/image-only PDF extracts to nothing. Say so plainly instead of
@@ -194,3 +205,6 @@ module.exports = async (req, res) => {
     return res.status(502).json({ error: ERROR_MESSAGES[code](provider, model), code, detail: safeErrorDetail(err) });
   }
 };
+
+// Exposed for tests only.
+module.exports.extractText = extractText;
