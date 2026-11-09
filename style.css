@@ -675,22 +675,24 @@ body.authed .scroll-progress{display:none;}
 
 /* sticky mobile CTA */
 .sticky-cta{
-  /* Sits just above the iPhone home indicator in Safari and in the installed
-     app (where env(safe-area-inset-bottom) is ~34px), with a sane minimum. */
-  position:fixed; left:12px; right:12px; bottom:max(12px, calc(8px + env(safe-area-inset-bottom))); z-index:45;
-  max-width:520px; margin:0 auto;
-  display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 8px 8px 18px;
-  background:color-mix(in srgb, var(--card) 86%, transparent); -webkit-backdrop-filter:blur(18px) saturate(1.5); backdrop-filter:blur(18px) saturate(1.5);
-  border:1px solid var(--line); border-radius:999px; box-shadow:var(--shadow-lg);
-  font-size:13.5px; font-weight:500; color:var(--ink-soft);
-  /* Hidden = fully below the screen edge whatever the safe area is, invisible,
-     and not tappable. A fixed 140% wasn't enough in the installed iPhone app:
-     the bar's top edge peeked out above the home indicator. */
-  transform:translateY(calc(100% + 24px + env(safe-area-inset-bottom)));
+  /* Docked flush to the bottom edge, full width, like the in-app tab bar.
+     It used to float above the edge as a rounded pill; in the installed
+     iPhone app that left a gap (12px + the 34px home-indicator area) with
+     page content showing through underneath. The bar now fills that strip. */
+  position:fixed; left:0; right:0; bottom:0; z-index:45;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px max(16px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background:color-mix(in srgb, var(--card) 96%, transparent);
+  -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6);
+  border-top:1px solid var(--line); box-shadow:0 -8px 24px -12px rgba(0,0,0,.18);
+  font-size:14px; font-weight:500; color:var(--ink-soft);
+  /* Hidden = fully below the screen edge, invisible and not tappable. */
+  transform:translateY(100%);
   opacity:0; visibility:hidden; pointer-events:none;
-  transition:transform .5s var(--ease), opacity .3s ease, visibility 0s linear .5s;
+  transition:transform .45s var(--ease), opacity .25s ease, visibility 0s linear .45s;
 }
-.sticky-cta.show{transform:none; opacity:1; visibility:visible; pointer-events:auto; transition:transform .5s var(--ease), opacity .3s ease, visibility 0s;}
+.sticky-cta .btn{min-height:44px; padding:10px 20px;}
+.sticky-cta.show{transform:none; opacity:1; visibility:visible; pointer-events:auto; transition:transform .45s var(--ease), opacity .25s ease, visibility 0s;}
 body.authed .sticky-cta{display:none;}
 @media (min-width:768px){ .sticky-cta{display:none;} }
 
