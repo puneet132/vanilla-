@@ -1275,7 +1275,7 @@ async function openLogDetail(id) {
     <div id="followupList">
       ${followUps.map((f, idx) => `
         <div class="followup-item">
-          <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Follow-up · ${f.date} · <span class="badge badge-status">${escapeHtml(f.status)}</span></div>
+          <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Follow-up · ${escapeHtml(f.date)} · <span class="badge badge-status">${escapeHtml(f.status)}</span></div>
           <div style="font-weight:600; margin-bottom:4px;">${escapeHtml(f.subject)}</div>
           <div style="white-space:pre-wrap; font-size:14px; margin-bottom:8px;">${escapeHtml(f.body)}</div>
           <div class="btn-row">

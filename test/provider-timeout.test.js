@@ -28,7 +28,12 @@ test("an aborted provider call surfaces as provider_down, not a hang", async () 
   global.fetch = (_url, init) => new Promise((_, reject) => {
     init.signal.addEventListener("abort", () => reject(Object.assign(new Error("t"), { name: "TimeoutError" })));
   });
-  const signal = AbortSignal.timeout(20);
+  // Not AbortSignal.timeout(): its timer is unref'd, so with nothing else
+  // keeping the process alive Node exits before it fires and the runner
+  // reports this test (and every one after it) as cancelled, not failed.
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(Object.assign(new Error("t"), { name: "TimeoutError" })), 20);
+  const signal = controller.signal;
   await assert.rejects(
     callProvider({ provider: "openai", model: "gpt-5", apiKey: "k", system: "s", text: "x", tool: TOOL, signal }),
     (err) => err.status === 504 && classifyProviderError(err) === "provider_down"

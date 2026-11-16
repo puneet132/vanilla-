@@ -17,14 +17,15 @@
 // vercel.json serves this file with `Cache-Control: no-cache`, the browser
 // re-checks it on navigation, so a client stuck on the old worker self-heals
 // within about two loads.
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const CACHE = `vanilla-${CACHE_VERSION}`;
 
 // Only immutable assets belong here. Deliberately NOT index.html/app.js/style.css.
 const PRECACHE = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./icons/maskable-512.png"
+  "./icons/maskable-512.png",
+  "./icons/logo.svg"
 ];
 
 self.addEventListener("install", e => {
