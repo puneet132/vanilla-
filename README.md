@@ -8,29 +8,72 @@ per account (company, role, date applied, resume, email, follow-ups) and sync ac
 devices. Each user connects their own AI provider key (Anthropic / OpenAI / Gemini / OpenRouter) —
 nothing is billed to anyone but the account that added the key.
 
+| | |
+|---|---|
+| **Live app** | https://vanilla-brown.vercel.app |
+| **Stack** | Plain HTML, CSS and JavaScript (no build step) · Vercel serverless functions · Firebase Auth + Firestore |
+| **AI** | Each user's own key: Anthropic, OpenAI, Gemini or OpenRouter |
+| **Tests** | `npm test` (178 tests, no external services needed) |
+
+## What's in the repository
+
 ```
-index.html          screens markup
-style.css            all styling
-app.js                app logic: auth, capture flow, Firestore CRUD, providers, follow-ups
-firebase-init.js      Firebase client config + the separate Gmail-scope provider
-mime.mjs              builds the RFC-822 message the Gmail draft API expects
-firestore.rules       security rules — deploy these in the Firebase console
-manifest.json, sw.js, icons/   PWA install/offline shell
-test/                 node --test suites (npm test) — not deployed
+index.html            All screens: landing page, capture, fit check, review, log, profile
+style.css             All styling, light and dark themes
+app.js                App logic: sign-in, capture flow, Firestore reads/writes, providers, follow-ups
+ui.js                 Landing-page behaviour: theme switch, scroll reveals, the "how it works" demo
+theme.js              Applies the saved theme before first paint (no flash)
+firebase-init.js      Firebase web config and the separate Gmail-scope provider
+mime.mjs              Builds the message the Gmail drafts API expects
+master-resume.mjs     Turns the saved master resume into the .docx builder's shape
+email-format.mjs      Cleans up the drafted email body
+gmail-error.mjs       Turns Gmail API failures into messages a person can act on
+http-error.mjs        Does the same for failures from this app's own API
+manifest.json, sw.js  Install details and offline support
+icons/                logo.svg and the PNG app icons
+og-image.png          Link-preview image
+firestore.rules       Security rules. Paste into the Firebase console; not served by the site
 api/
-  _firebaseAdmin.js     shared Admin SDK init + ID token verification
-  _crypto.js              AES-256-GCM encrypt/decrypt for provider keys at rest
-  _llm.js                  normalizes Anthropic/OpenAI/Gemini/OpenRouter structured-output
-                             calls, plus model fallback and provider error classification
-  _resume.js               shared resume-shape helpers used by the docx builder
-  save-provider-key.js    save/remove/status for a user's encrypted provider key
-  profile-resume-parse.js  uploaded .pdf/.docx → structured master-resume JSON
-  job-extract.js          vision call → structured JD JSON
-  job-generate.js         fit verdict + tailored resume + email draft
-  job-followup.js         follow-up nudge email for an existing application
-  job-resume-docx.js      deterministic ATS-safe .docx builder
-  delete-account.js       erases profile, applications, and encrypted keys
+  _firebaseAdmin.js       Admin SDK setup and sign-in token checks
+  _crypto.js              AES-256-GCM encryption for provider keys at rest
+  _llm.js                 One interface over the four AI providers, with model fallback,
+                          timeouts and error classification
+  _resume.js              Resume helpers shared by the .docx builder
+  save-provider-key.js    Save, remove or check a user's encrypted provider key
+  profile-resume-parse.js Uploaded .pdf/.docx to structured master resume
+  job-extract.js          Screenshot to structured job details
+  job-generate.js         Fit verdict, email draft and (on request) tailored resume
+  job-followup.js         Follow-up email for an existing application
+  job-resume-docx.js      Builds the ATS-safe .docx
+  delete-account.js       Erases profile, applications and encrypted keys
+test/                 Test suites (not deployed)
+PRIVACY.md, TERMS.md  The policies the app links to
 ```
+
+## Run it on your computer
+
+You need Node.js 20 or newer.
+
+```bash
+git clone https://github.com/puneet132/vanilla-.git
+```
+
+```bash
+cd vanilla-
+```
+
+```bash
+npm install
+```
+
+```bash
+npm test
+```
+
+The landing page opens from any static server (for example `npx serve .`). Signing in and
+everything after it need the serverless functions and their secrets, so use the Vercel
+CLI for that: `vercel dev`, with the environment variables from the Setup section below.
+Add `localhost` under Firebase **Authentication → Settings → Authorized domains** first.
 
 ## Setup — do this once
 
